@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * CardMetadata property-based tests
  *
@@ -11,12 +9,12 @@
  * what broke. This is far more thorough than hand-picked examples.
  */
 
-const { describe, it, expect } = require('vitest');
-const fc = require('fast-check');
-const { parseCardMetadata, printCardMetadata, VALID_RARITIES } = require('./cardMetadata');
+import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
+import { parseCardMetadata, printCardMetadata, VALID_RARITIES } from './cardMetadata.js';
 
-// Arbitrary that generates valid CardMetadata objects
-// fc.record() builds an object where each field uses its own arbitrary generator
+// Arbitrary that generates valid CardMetadata objects.
+// fc.record() builds an object where each field uses its own arbitrary generator.
 const validMetadataArb = fc.record({
   name: fc.string({ minLength: 1 }).filter((s) => s.trim().length > 0),
   rarity: fc.constantFrom(...VALID_RARITIES),
@@ -43,9 +41,10 @@ describe('CardMetadata', () => {
   // Feature: nft-card-game, Property 2: Whitespace-only names are rejected
   // A card with no real name is meaningless — we must reject it before minting.
   it('Property 2: whitespace-only names are rejected', () => {
-    // Generate strings made only of space, tab, and newline characters
+    // fc.array + fc.constantFrom builds a list of whitespace chars, then join into a string
     const whitespaceArb = fc
-      .stringOf(fc.constantFrom(' ', '\t', '\n'), { minLength: 1 });
+      .array(fc.constantFrom(' ', '\t', '\n'), { minLength: 1 })
+      .map((chars) => chars.join(''));
 
     fc.assert(
       fc.property(whitespaceArb, (wsName) => {
@@ -64,7 +63,6 @@ describe('CardMetadata', () => {
 
   // Feature: nft-card-game, Property 3: Attack and defense are in range after parse
   // After a successful parse, both stats must be integers in [1, 100].
-  // This confirms the validator enforces the game's stat boundaries.
   it('Property 3: parsed attack and defense are integers in [1, 100]', () => {
     fc.assert(
       fc.property(validMetadataArb, (metadata) => {
@@ -80,6 +78,7 @@ describe('CardMetadata', () => {
     );
   });
 
+  // Unit tests for specific error cases
   it('rejects invalid JSON', () => {
     expect(() => parseCardMetadata('not json')).toThrow('invalid JSON');
   });
