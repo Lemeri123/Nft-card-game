@@ -18,10 +18,17 @@
  * This prevents anyone from stealing cards — you can only move your own.
  */
 
-const { TransferTransaction } = require('@hashgraph/sdk');
+const { TransferTransaction, PrivateKey } = require('@hashgraph/sdk');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
 const { logTransaction } = require('../audit/auditLogger');
+
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try { return PrivateKey.fromStringECDSA(key); } catch {}
+  try { return PrivateKey.fromStringDer(key); } catch {}
+  return PrivateKey.fromStringED25519(key);
+}
 
 /**
  * Proposes a trade between two players.
@@ -90,7 +97,9 @@ function proposeTrade(options) {
  * @returns {Promise<{ transactionId: string }>}
  */
 async function executeTrade(options) {
-  const { client, tradeId, tokenId, sig1, sig2, _deps } = options;
+  const { client, tradeId, tokenId, _deps } = options;
+  const sig1 = parseKey(options.sig1);
+  const sig2 = parseKey(options.sig2);
   const dbInstance = (_deps && _deps.db) || db;
   const TransferTx = (_deps && _deps.TransferTransaction) || TransferTransaction;
   const auditLog = (_deps && _deps.logTransaction) || logTransaction;

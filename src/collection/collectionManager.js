@@ -31,7 +31,25 @@ const {
   CustomRoyaltyFee,
   CustomFixedFee,
   Hbar,
+  PrivateKey,
 } = require('@hashgraph/sdk');
+
+/**
+ * Parses a key value into a PrivateKey object if it's a string.
+ * Accepts raw hex (ECDSA), DER-encoded hex, or an already-parsed PrivateKey.
+ */
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try {
+    return PrivateKey.fromStringECDSA(key);
+  } catch {
+    try {
+      return PrivateKey.fromStringDer(key);
+    } catch {
+      return PrivateKey.fromStringED25519(key);
+    }
+  }
+}
 
 /**
  * Builds the custom fee objects for the collection.
@@ -82,10 +100,12 @@ async function createCardCollection(config) {
     symbol,
     maxSupply,
     treasuryAccountId,
-    treasuryKey,
-    adminKey,
-    supplyKey,
   } = config;
+
+  // Parse string keys into PrivateKey objects — the SDK requires proper key objects, not raw strings
+  const treasuryKey = parseKey(config.treasuryKey);
+  const adminKey = parseKey(config.adminKey);
+  const supplyKey = parseKey(config.supplyKey);
 
   // Allow tests to inject fake SDK constructors; production uses the real ones
   const deps = config._deps || { CustomFixedFee, CustomRoyaltyFee, Hbar };

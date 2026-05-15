@@ -15,10 +15,17 @@
  * Listing lifecycle: active → sold (purchased) or expired (card moved away)
  */
 
-const { TransferTransaction, Hbar } = require('@hashgraph/sdk');
+const { TransferTransaction, Hbar, PrivateKey } = require('@hashgraph/sdk');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
 const { logTransaction } = require('../audit/auditLogger');
+
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try { return PrivateKey.fromStringECDSA(key); } catch {}
+  try { return PrivateKey.fromStringDer(key); } catch {}
+  return PrivateKey.fromStringED25519(key);
+}
 
 /**
  * Lists a card for sale.
@@ -75,7 +82,9 @@ function listCard(options) {
  * @returns {Promise<{ transactionId: string }>}
  */
 async function purchaseCard(options) {
-  const { client, listingId, buyerId, buyerKey, sellerKey, buyerHbarBalance, _deps } = options;
+  const { client, listingId, buyerId, buyerHbarBalance, _deps } = options;
+  const buyerKey = parseKey(options.buyerKey);
+  const sellerKey = parseKey(options.sellerKey);
   const dbInstance = (_deps && _deps.db) || db;
   const TransferTx = (_deps && _deps.TransferTransaction) || TransferTransaction;
   const HbarCls = (_deps && _deps.Hbar) || Hbar;

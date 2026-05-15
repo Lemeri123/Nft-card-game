@@ -16,9 +16,16 @@
  * hash, so if anyone tampers with the file the CID changes and you'd know.
  */
 
-const { TokenMintTransaction } = require('@hashgraph/sdk');
+const { TokenMintTransaction, PrivateKey } = require('@hashgraph/sdk');
 const { parseCardMetadata, printCardMetadata } = require('./cardMetadata');
 const { db } = require('../db/database');
+
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try { return PrivateKey.fromStringECDSA(key); } catch {}
+  try { return PrivateKey.fromStringDer(key); } catch {}
+  return PrivateKey.fromStringED25519(key);
+}
 
 /**
  * Uploads metadata JSON to IPFS and returns the CID.
@@ -70,12 +77,14 @@ async function mintCard(options) {
   const {
     client,
     tokenId,
-    supplyKey,
     metadata,
     currentSupply,
     maxSupply,
     _deps,
   } = options;
+
+  // Parse string key into PrivateKey object
+  const supplyKey = parseKey(options.supplyKey);
 
   // Guard: reject if collection is full
   if (currentSupply >= maxSupply) {

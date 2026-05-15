@@ -17,9 +17,16 @@
  * 2. The recipient has associated with the token collection (can receive it)
  */
 
-const { TransferTransaction } = require('@hashgraph/sdk');
+const { TransferTransaction, PrivateKey } = require('@hashgraph/sdk');
 const { db } = require('../db/database');
 const { logTransaction } = require('../audit/auditLogger');
+
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try { return PrivateKey.fromStringECDSA(key); } catch {}
+  try { return PrivateKey.fromStringDer(key); } catch {}
+  return PrivateKey.fromStringED25519(key);
+}
 
 /**
  * Distributes a card from the Treasury to a player.
@@ -40,10 +47,11 @@ async function distributeCard(options) {
     tokenId,
     serialNumber,
     treasuryAccountId,
-    treasuryKey,
     recipientAccountId,
     _deps,
   } = options;
+
+  const treasuryKey = parseKey(options.treasuryKey);
 
   const dbInstance = (_deps && _deps.db) || db;
   const TransferTx = (_deps && _deps.TransferTransaction) || TransferTransaction;

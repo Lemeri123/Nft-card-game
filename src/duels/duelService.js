@@ -20,10 +20,17 @@
  * still win — but stronger cards win more often on average.
  */
 
-const { TransferTransaction, PrngTransaction } = require('@hashgraph/sdk');
+const { TransferTransaction, PrngTransaction, PrivateKey } = require('@hashgraph/sdk');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
 const { logTransaction } = require('../audit/auditLogger');
+
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try { return PrivateKey.fromStringECDSA(key); } catch {}
+  try { return PrivateKey.fromStringDer(key); } catch {}
+  return PrivateKey.fromStringED25519(key);
+}
 
 const DUEL_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -126,7 +133,9 @@ function acceptDuel(options) {
  * @returns {Promise<{ winnerId: string, transactionId: string }>}
  */
 async function resolveDuel(options) {
-  const { client, duelId, tokenId, challengerKey, targetKey, _deps } = options;
+  const { client, duelId, tokenId, _deps } = options;
+  const challengerKey = parseKey(options.challengerKey);
+  const targetKey = parseKey(options.targetKey);
   const dbInstance = (_deps && _deps.db) || db;
   const TransferTx = (_deps && _deps.TransferTransaction) || TransferTransaction;
   const PrngTx = (_deps && _deps.PrngTransaction) || PrngTransaction;

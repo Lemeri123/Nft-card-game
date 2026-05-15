@@ -18,9 +18,16 @@
  * This is a security feature — no one can force tokens onto your account.
  */
 
-const { AccountBalanceQuery, TokenAssociateTransaction, Hbar, HbarUnit } = require('@hashgraph/sdk');
+const { AccountBalanceQuery, TokenAssociateTransaction, Hbar, HbarUnit, PrivateKey } = require('@hashgraph/sdk');
 
-const MIN_HBAR_BALANCE = 0.1; // Minimum HBAR required to cover association fee
+const MIN_HBAR_BALANCE = 0.1;
+
+function parseKey(key) {
+  if (typeof key !== 'string') return key;
+  try { return PrivateKey.fromStringECDSA(key); } catch {}
+  try { return PrivateKey.fromStringDer(key); } catch {}
+  return PrivateKey.fromStringED25519(key);
+}
 
 /**
  * Checks whether a Hedera account exists on the network.
@@ -77,7 +84,8 @@ async function getAccountHbarBalance(options) {
  * @returns {Promise<{ success: boolean, alreadyAssociated: boolean }>}
  */
 async function registerPlayer(options) {
-  const { client, accountId, playerKey, tokenId, _deps } = options;
+  const { client, accountId, tokenId, _deps } = options;
+  const playerKey = parseKey(options.playerKey);
   const BalanceQuery = (_deps && _deps.AccountBalanceQuery) || AccountBalanceQuery;
   const AssociateTx = (_deps && _deps.TokenAssociateTransaction) || TokenAssociateTransaction;
   const HbarCls = (_deps && _deps.Hbar) || Hbar;
