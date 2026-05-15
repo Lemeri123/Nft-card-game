@@ -42,22 +42,24 @@ async function uploadToIpfs(metadataJson) {
     return `QmSTUB${hash}`;
   }
 
-  // Real IPFS upload via HTTP (works with NFT.Storage, Pinata, or a local node)
+  // Real IPFS upload via Pinata pinJSONToIPFS endpoint
   const response = await fetch(process.env.IPFS_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(process.env.IPFS_API_KEY ? { Authorization: `Bearer ${process.env.IPFS_API_KEY}` } : {}),
+      Authorization: `Bearer ${process.env.IPFS_API_KEY}`,
     },
-    body: metadataJson,
+    // Pinata expects { pinataContent: <your JSON object> }
+    body: JSON.stringify({ pinataContent: JSON.parse(metadataJson) }),
   });
 
   if (!response.ok) {
-    throw new Error(`IPFS upload failed: ${response.status} ${response.statusText}`);
+    const errText = await response.text();
+    throw new Error(`IPFS upload failed: ${response.status} ${errText}`);
   }
 
   const data = await response.json();
-  return data.cid || data.IpfsHash; // NFT.Storage returns `cid`, Pinata returns `IpfsHash`
+  return data.IpfsHash; // Pinata returns IpfsHash
 }
 
 /**
