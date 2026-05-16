@@ -34,16 +34,31 @@ function parseKey(key) {
 
 const DUEL_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
+// Role advantage table: attacker role → defender role that it beats
+const ROLE_ADVANTAGES = {
+  Warrior:  'Mage',
+  Mage:     'Ranger',
+  Ranger:   'Warrior',
+  Guardian: 'Mage',
+};
+
+const ROLE_BONUS = 10;
+
 /**
- * Pure function: computes a duel score for a card given a prng value.
+ * Pure function: computes a duel score for a card given a prng value and opponent role.
  * Exported separately so it can be property-tested without any SDK calls.
  *
- * @param {{ attack: number, defense: number }} card
+ * @param {{ attack: number, defense: number, role?: string }} card
  * @param {number} prngValue - Integer 0–99 from PrngTransaction
+ * @param {string} [opponentRole] - Role of the opposing card
  * @returns {number}
  */
-function computeDuelScore(card, prngValue) {
-  return (card.attack * 0.6 + card.defense * 0.4) + (prngValue % 20);
+function computeDuelScore(card, prngValue, opponentRole) {
+  const base = (card.attack * 0.6 + card.defense * 0.4) + (prngValue % 20);
+  const roleBonus = (card.role && opponentRole && ROLE_ADVANTAGES[card.role] === opponentRole)
+    ? ROLE_BONUS
+    : 0;
+  return base + roleBonus;
 }
 
 /**
@@ -163,9 +178,9 @@ async function resolveDuel(options) {
   const prngRecord = await prngResponse.getRecord(client);
   const prngValue = prngRecord.prngNumber;
 
-  // Compute scores — challenger wins ties
-  const score1 = computeDuelScore(card1, prngValue);
-  const score2 = computeDuelScore(card2, prngValue);
+  // Compute scores with role bonus — challenger wins ties
+  const score1 = computeDuelScore(card1, prngValue, card2.role);
+  const score2 = computeDuelScore(card2, prngValue, card1.role);
   const challengerWins = score1 >= score2;
 
   const winnerId = challengerWins ? duel.challengerAccountId : duel.targetAccountId;
