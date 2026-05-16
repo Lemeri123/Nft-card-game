@@ -27,6 +27,10 @@ const { logTransaction } = require('../audit/auditLogger');
 
 function parseKey(key) {
   if (typeof key !== 'string') return key;
+  const cleaned = key.startsWith('0x') || key.startsWith('0X') ? key.slice(2) : key;
+  try { return PrivateKey.fromStringECDSA(cleaned); } catch {}
+  try { return PrivateKey.fromStringDer(cleaned); } catch {}
+  try { return PrivateKey.fromStringED25519(cleaned); } catch {}
   try { return PrivateKey.fromStringECDSA(key); } catch {}
   try { return PrivateKey.fromStringDer(key); } catch {}
   return PrivateKey.fromStringED25519(key);

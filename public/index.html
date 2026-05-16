@@ -171,6 +171,28 @@
 
 <main>
 
+  <!-- ── Register Player ── -->
+  <section id="register">
+    <h2>🆕 Register Player</h2>
+    <p style="font-size:0.82rem;color:#666;margin-bottom:1rem;">Associate a Hedera account with the card collection. New players receive 3 random common starter cards.</p>
+    <div class="form-row">
+      <div class="field">
+        <label for="reg-account-id">Account ID</label>
+        <input type="text" id="reg-account-id" placeholder="0.0.12345" />
+      </div>
+      <div class="field">
+        <label for="reg-player-key">Player Private Key</label>
+        <input type="text" id="reg-player-key" placeholder="hex or DER private key" />
+      </div>
+      <div class="field">
+        <label for="reg-token-id">Token ID <span style="color:#555">(optional)</span></label>
+        <input type="text" id="reg-token-id" placeholder="uses server default" />
+      </div>
+      <button id="reg-btn">Register</button>
+    </div>
+    <div id="reg-msg"></div>
+  </section>
+
   <!-- ── Card Gallery ── -->
   <section id="gallery">
     <h2>🃏 Card Gallery</h2>
@@ -256,7 +278,129 @@
     <div id="duel-msg"></div>
   </section>
 
-</main>
+  <!-- ── Duel Accept ── -->
+  <section id="duel-accept">
+    <h2>🤝 Accept Duel</h2>
+    <div class="form-row">
+      <div class="field">
+        <label for="accept-duel-id">Duel ID</label>
+        <input type="text" id="accept-duel-id" placeholder="uuid" />
+      </div>
+      <div class="field">
+        <label for="accept-token-id">Token ID</label>
+        <input type="text" id="accept-token-id" placeholder="0.0.12345" />
+      </div>
+      <button id="accept-btn">Accept Duel</button>
+    </div>
+    <div id="accept-msg"></div>
+  </section>
+
+  <!-- ── Duel Resolve ── -->
+  <section id="duel-resolve">
+    <h2>🏆 Resolve Duel</h2>
+    <div class="form-row">
+      <div class="field">
+        <label for="resolve-duel-id">Duel ID</label>
+        <input type="text" id="resolve-duel-id" placeholder="uuid" />
+      </div>
+      <div class="field">
+        <label for="resolve-token-id">Token ID</label>
+        <input type="text" id="resolve-token-id" placeholder="0.0.12345" />
+      </div>
+      <div class="field">
+        <label for="resolve-challenger-key">Challenger Private Key</label>
+        <input type="text" id="resolve-challenger-key" placeholder="hex or DER private key" />
+      </div>
+      <div class="field">
+        <label for="resolve-target-key">Target Private Key</label>
+        <input type="text" id="resolve-target-key" placeholder="hex or DER private key" />
+      </div>
+      <button id="resolve-btn">Resolve Duel</button>
+    </div>
+    <div id="resolve-msg"></div>
+  </section>
+
+  <!-- ── Propose Trade ── -->
+  <section id="trade">
+    <h2>🔄 Propose Trade</h2>
+    <div class="form-row">
+      <div class="field">
+        <label for="trade-p1-id">Your Account ID</label>
+        <input type="text" id="trade-p1-id" placeholder="0.0.111" />
+      </div>
+      <div class="field">
+        <label for="trade-p1-serial">Your Card Serial</label>
+        <input type="number" id="trade-p1-serial" placeholder="1" min="1" />
+      </div>
+      <div class="field">
+        <label for="trade-p2-id">Their Account ID</label>
+        <input type="text" id="trade-p2-id" placeholder="0.0.222" />
+      </div>
+      <div class="field">
+        <label for="trade-p2-serial">Their Card Serial</label>
+        <input type="number" id="trade-p2-serial" placeholder="2" min="1" />
+      </div>
+      <div class="field">
+        <label for="trade-token-id">Token ID</label>
+        <input type="text" id="trade-token-id" placeholder="0.0.12345" />
+      </div>
+      <button id="trade-btn">Propose Trade</button>
+    </div>
+    <div id="trade-msg"></div>
+  </section>
+
+  <!-- ── Marketplace ── -->
+  <section id="marketplace">
+    <h2>🏪 Marketplace</h2>
+
+    <h3 style="font-size:0.9rem;color:#aaa;margin-bottom:0.8rem;">List a Card for Sale</h3>
+    <div class="form-row">
+      <div class="field">
+        <label for="list-seller-id">Seller Account ID</label>
+        <input type="text" id="list-seller-id" placeholder="0.0.111" />
+      </div>
+      <div class="field">
+        <label for="list-serial">Card Serial</label>
+        <input type="number" id="list-serial" placeholder="1" min="1" />
+      </div>
+      <div class="field">
+        <label for="list-price">Price (HBAR)</label>
+        <input type="number" id="list-price" placeholder="50" min="1" />
+      </div>
+      <div class="field">
+        <label for="list-token-id">Token ID</label>
+        <input type="text" id="list-token-id" placeholder="0.0.12345" />
+      </div>
+      <button id="list-btn">List Card</button>
+    </div>
+    <div id="list-msg"></div>
+
+    <hr style="border-color:#2a2a2a;margin:1.2rem 0;" />
+
+    <h3 style="font-size:0.9rem;color:#aaa;margin-bottom:0.8rem;">Buy a Listed Card</h3>
+    <div class="form-row">
+      <div class="field">
+        <label for="buy-listing-id">Listing ID</label>
+        <input type="text" id="buy-listing-id" placeholder="uuid" />
+      </div>
+      <div class="field">
+        <label for="buy-buyer-id">Buyer Account ID</label>
+        <input type="text" id="buy-buyer-id" placeholder="0.0.222" />
+      </div>
+      <div class="field">
+        <label for="buy-token-id">Token ID</label>
+        <input type="text" id="buy-token-id" placeholder="0.0.12345" />
+      </div>
+      <button id="buy-btn">Buy Card</button>
+    </div>
+    <div id="buy-msg"></div>
+
+    <hr style="border-color:#2a2a2a;margin:1.2rem 0;" />
+
+    <h3 style="font-size:0.9rem;color:#aaa;margin-bottom:0.8rem;">Active Listings</h3>
+    <button id="listings-btn" style="margin-bottom:0.8rem;">Refresh Listings</button>
+    <div id="listings-grid"></div>
+  </section>
 
 <script>
 'use strict';
@@ -343,7 +487,7 @@ function spinner() {
   return s;
 }
 
-// ── Health check ──────────────────────────────────────────────────────────
+// ── Health check + auto-fill TOKEN_ID ────────────────────────────────────
 (async function checkHealth() {
   const dot    = document.getElementById('health-dot');
   const status = document.getElementById('health-status');
@@ -353,6 +497,19 @@ function spinner() {
     if (data.status === 'ok') {
       dot.className = 'online';
       status.textContent = 'Server online';
+
+      // Auto-fill all Token ID fields from server config
+      if (data.tokenId) {
+        const tokenFields = [
+          'mint-token-id', 'reg-token-id', 'duel-token-id',
+          'accept-token-id', 'resolve-token-id', 'trade-token-id',
+          'list-token-id', 'buy-token-id',
+        ];
+        tokenFields.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el && !el.value) el.value = data.tokenId;
+        });
+      }
     } else {
       throw new Error('not ok');
     }
@@ -515,7 +672,304 @@ document.getElementById('mint-btn').addEventListener('click', async () => {
   }
 });
 
-// ── Duel Form ─────────────────────────────────────────────────────────────
+// ── Register Player ───────────────────────────────────────────────────────
+document.getElementById('reg-btn').addEventListener('click', async () => {
+  const accountId = document.getElementById('reg-account-id').value.trim();
+  const playerKey = document.getElementById('reg-player-key').value.trim();
+  const tokenId   = document.getElementById('reg-token-id').value.trim() || undefined;
+  const msgEl     = document.getElementById('reg-msg');
+  const btn       = document.getElementById('reg-btn');
+
+  if (!accountId || !playerKey) {
+    showMsg(msgEl, 'Account ID and private key are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const body = { accountId, playerKey };
+    if (tokenId) body.tokenId = tokenId;
+
+    const res  = await fetch('/api/v1/players/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Registration failed.', 'error');
+    } else {
+      const cards = data.starterCards && data.starterCards.length
+        ? ` Starter cards distributed: #${data.starterCards.join(', #')}.`
+        : '';
+      const note  = data.alreadyAssociated ? ' (already associated)' : '';
+      showMsg(msgEl, `✅ Registered ${accountId}${note}.${cards}`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Duel Accept ───────────────────────────────────────────────────────────
+document.getElementById('accept-btn').addEventListener('click', async () => {
+  const duelId  = document.getElementById('accept-duel-id').value.trim();
+  const tokenId = document.getElementById('accept-token-id').value.trim();
+  const msgEl   = document.getElementById('accept-msg');
+  const btn     = document.getElementById('accept-btn');
+
+  if (!duelId || !tokenId) {
+    showMsg(msgEl, 'Duel ID and Token ID are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch(`/api/v1/duels/${encodeURIComponent(duelId)}/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenId }),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Accept failed.', 'error');
+    } else {
+      showMsg(msgEl, `✅ Duel ${data.duelId} accepted. Ready to resolve.`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Duel Resolve ──────────────────────────────────────────────────────────
+document.getElementById('resolve-btn').addEventListener('click', async () => {
+  const duelId        = document.getElementById('resolve-duel-id').value.trim();
+  const tokenId       = document.getElementById('resolve-token-id').value.trim();
+  const challengerKey = document.getElementById('resolve-challenger-key').value.trim();
+  const targetKey     = document.getElementById('resolve-target-key').value.trim();
+  const msgEl         = document.getElementById('resolve-msg');
+  const btn           = document.getElementById('resolve-btn');
+
+  if (!duelId || !tokenId || !challengerKey || !targetKey) {
+    showMsg(msgEl, 'All four fields are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch(`/api/v1/duels/${encodeURIComponent(duelId)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenId, challengerKey, targetKey }),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Resolve failed.', 'error');
+    } else {
+      showMsg(msgEl, `🏆 Winner: ${data.winnerId} — tx: ${data.transactionId}`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Propose Trade ─────────────────────────────────────────────────────────
+document.getElementById('trade-btn').addEventListener('click', async () => {
+  const player1Id   = document.getElementById('trade-p1-id').value.trim();
+  const card1Serial = document.getElementById('trade-p1-serial').value.trim();
+  const player2Id   = document.getElementById('trade-p2-id').value.trim();
+  const card2Serial = document.getElementById('trade-p2-serial').value.trim();
+  const tokenId     = document.getElementById('trade-token-id').value.trim();
+  const msgEl       = document.getElementById('trade-msg');
+  const btn         = document.getElementById('trade-btn');
+
+  if (!player1Id || !card1Serial || !player2Id || !card2Serial || !tokenId) {
+    showMsg(msgEl, 'All five fields are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch('/api/v1/trades/propose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player1Id, card1Serial: Number(card1Serial),
+        player2Id, card2Serial: Number(card2Serial),
+        tokenId,
+      }),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Trade proposal failed.', 'error');
+    } else {
+      showMsg(msgEl, `✅ Trade proposed — ID: ${data.tradeId}`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Marketplace: List ─────────────────────────────────────────────────────
+document.getElementById('list-btn').addEventListener('click', async () => {
+  const sellerAccountId = document.getElementById('list-seller-id').value.trim();
+  const serialNumber    = document.getElementById('list-serial').value.trim();
+  const priceHbar       = document.getElementById('list-price').value.trim();
+  const tokenId         = document.getElementById('list-token-id').value.trim();
+  const msgEl           = document.getElementById('list-msg');
+  const btn             = document.getElementById('list-btn');
+
+  if (!sellerAccountId || !serialNumber || !priceHbar || !tokenId) {
+    showMsg(msgEl, 'All four fields are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch('/api/v1/marketplace/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerAccountId, serialNumber: Number(serialNumber),
+        priceHbar: Number(priceHbar), tokenId,
+      }),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Listing failed.', 'error');
+    } else {
+      showMsg(msgEl, `✅ Listed — Listing ID: ${data.listingId}`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Marketplace: Buy ──────────────────────────────────────────────────────
+document.getElementById('buy-btn').addEventListener('click', async () => {
+  const listingId    = document.getElementById('buy-listing-id').value.trim();
+  const buyerAccountId = document.getElementById('buy-buyer-id').value.trim();
+  const tokenId      = document.getElementById('buy-token-id').value.trim();
+  const msgEl        = document.getElementById('buy-msg');
+  const btn          = document.getElementById('buy-btn');
+
+  if (!listingId || !buyerAccountId || !tokenId) {
+    showMsg(msgEl, 'All three fields are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch(`/api/v1/marketplace/${encodeURIComponent(listingId)}/purchase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buyerAccountId, tokenId }),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Purchase failed.', 'error');
+    } else {
+      showMsg(msgEl, `✅ Purchased — tx: ${data.transactionId}`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Marketplace: Active Listings ──────────────────────────────────────────
+async function loadListings() {
+  const gridEl = document.getElementById('listings-grid');
+  const btn    = document.getElementById('listings-btn');
+  btn.disabled = true;
+  gridEl.innerHTML = '';
+  gridEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch('/api/v1/marketplace');
+    const data = await res.json();
+    gridEl.innerHTML = '';
+
+    const listings = data.listings || data || [];
+    if (!listings.length) {
+      gridEl.innerHTML = '<p class="empty-msg">No active listings.</p>';
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'role-table';
+    table.innerHTML = `<thead><tr>
+      <th>Listing ID</th><th>Serial</th><th>Seller</th><th>Price (HBAR)</th>
+    </tr></thead>`;
+    const tbody = document.createElement('tbody');
+    listings.forEach((l) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-size:0.72rem;color:#888">${l.listingId}</td>
+        <td>#${l.serialNumber}</td>
+        <td style="font-size:0.78rem">${l.sellerAccountId}</td>
+        <td>${l.priceHbar}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    gridEl.appendChild(table);
+  } catch (err) {
+    gridEl.innerHTML = '';
+    gridEl.innerHTML = `<p class="empty-msg" style="color:#e57373">${err.message}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('listings-btn').addEventListener('click', loadListings);
+loadListings();
 document.getElementById('duel-btn').addEventListener('click', async () => {
   const fields = {
     challengerId:        document.getElementById('duel-challenger-id').value.trim(),

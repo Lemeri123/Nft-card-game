@@ -43,6 +43,7 @@ const ERROR_STATUS = {
   COLLECTION_FULL: 409,
   DUEL_CANCELLED: 409,
   INVALID_PRICE: 400,
+  MISSING_PLAYER_KEY: 400,
   INSUFFICIENT_BALANCE: 402,
   DUEL_EXPIRED: 410,
   SERVICE_UNAVAILABLE: 503,
@@ -118,7 +119,13 @@ router.post('/cards/mint', async (req, res) => {
 
 router.post('/cards/distribute', async (req, res) => {
   try {
-    const result = await distributeCard({ ...req.body, client: req.app.locals.client });
+    const result = await distributeCard({
+      ...req.body,
+      tokenId: req.body.tokenId || process.env.TOKEN_ID,
+      treasuryAccountId: req.body.treasuryAccountId || process.env.TREASURY_ACCOUNT_ID,
+      treasuryKey: req.body.treasuryKey || process.env.TREASURY_PRIVATE_KEY,
+      client: req.app.locals.client,
+    });
     res.json(result);
   } catch (err) { handleError(res, err); }
 });
@@ -136,7 +143,17 @@ router.get('/cards/:serialNumber', async (req, res) => {
 // --- Players ---
 router.post('/players/register', async (req, res) => {
   try {
-    const result = await registerPlayer({ ...req.body, client: req.app.locals.client });
+    const tokenId = req.body.tokenId || process.env.TOKEN_ID;
+    if (!tokenId) {
+      return res.status(400).json({ error: 'tokenId is required (or set TOKEN_ID in .env)', code: 'INVALID_REQUEST' });
+    }
+    const result = await registerPlayer({
+      ...req.body,
+      tokenId,
+      treasuryAccountId: req.body.treasuryAccountId || process.env.TREASURY_ACCOUNT_ID,
+      treasuryKey: req.body.treasuryKey || process.env.TREASURY_PRIVATE_KEY,
+      client: req.app.locals.client,
+    });
     res.json(result);
   } catch (err) { handleError(res, err); }
 });
@@ -163,7 +180,9 @@ router.post('/trades/:tradeId/execute', async (req, res) => {
 // --- Marketplace ---
 router.post('/marketplace/list', (req, res) => {
   try {
-    const result = listCard(req.body);
+    const body = { ...req.body };
+    if (!body.sellerId && body.sellerAccountId) body.sellerId = body.sellerAccountId;
+    const result = listCard(body);
     res.json(result);
   } catch (err) { handleError(res, err); }
 });
@@ -252,6 +271,24 @@ router.get('/history/:accountId', (req, res) => {
   try {
     const result = getPlayerHistory(req.params.accountId);
     res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// --- Leaderboard ---
+router.get('/leaderboard', (req, res) => {
+  try {
+    const { db } = require('../db/database');
+    const limit = Math.min(Number(req.query.limit) || 10, 100);
+    // Count duel wins per account from the audit log
+    const rows = db.prepare(`
+      SELECT d.winnerId AS accountId, COUNT(*) AS wins
+      FROM duels d
+      WHERE d.status = 'resolved' AND d.winnerId IS NOT NULL
+      GROUP BY d.winnerId
+      ORDER BY wins DESC
+      LIMIT ?
+    `).all(limit);
+    res.json({ leaderboard: rows });
   } catch (err) { handleError(res, err); }
 });
 

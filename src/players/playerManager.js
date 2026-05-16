@@ -18,16 +18,10 @@
  * This is a security feature — no one can force tokens onto your account.
  */
 
-const { AccountBalanceQuery, TokenAssociateTransaction, Hbar, HbarUnit, PrivateKey } = require('@hashgraph/sdk');
+const { AccountBalanceQuery, TokenAssociateTransaction, Hbar, HbarUnit } = require('@hashgraph/sdk');
+const { parsePrivateKey } = require('../utils/parsePrivateKey');
 
 const MIN_HBAR_BALANCE = 0.1;
-
-function parseKey(key) {
-  if (typeof key !== 'string') return key;
-  try { return PrivateKey.fromStringECDSA(key); } catch {}
-  try { return PrivateKey.fromStringDer(key); } catch {}
-  return PrivateKey.fromStringED25519(key);
-}
 
 /**
  * Checks whether a Hedera account exists on the network.
@@ -73,19 +67,35 @@ async function getAccountHbarBalance(options) {
 }
 
 /**
- * Registers a player by associating their account with the card collection.
+ * Registers a player by associating their account with the card collection,
+ * then auto-distributes 3 random common starter cards from the Treasury.
  *
  * @param {object} options
  * @param {import('@hashgraph/sdk').Client} options.client
  * @param {string} options.accountId - Player's Hedera account ID
  * @param {import('@hashgraph/sdk').PrivateKey} options.playerKey - Player's private key
  * @param {string} options.tokenId - Card collection token ID
+ * @param {string} [options.treasuryAccountId] - Treasury account (for starter card distribution)
+ * @param {string} [options.treasuryKey] - Treasury private key (for starter card distribution)
  * @param {object} [options._deps]
- * @returns {Promise<{ success: boolean, alreadyAssociated: boolean }>}
+ * @returns {Promise<{ success: boolean, alreadyAssociated: boolean, starterCards: number[] }>}
  */
 async function registerPlayer(options) {
   const { client, accountId, tokenId, _deps } = options;
-  const playerKey = parseKey(options.playerKey);
+
+  // Validate playerKey is present before attempting to parse
+  if (!options.playerKey || (typeof options.playerKey === 'string' && options.playerKey.trim() === '')) {
+    const err = new Error('MISSING_PLAYER_KEY: playerKey is required to sign the token association transaction');
+    err.code = 'MISSING_PLAYER_KEY';
+    throw err;
+  }
+
+  const playerKey = parsePrivateKey(options.playerKey);
+
+  if (playerKey.publicKey) {
+    console.log(`[PlayerManager] Parsed player key type: ${playerKey.type}, public key: ${playerKey.publicKey.toString()}`);
+  }
+
   const BalanceQuery = (_deps && _deps.AccountBalanceQuery) || AccountBalanceQuery;
   const AssociateTx = (_deps && _deps.TokenAssociateTransaction) || TokenAssociateTransaction;
   const HbarCls = (_deps && _deps.Hbar) || Hbar;
@@ -112,26 +122,66 @@ async function registerPlayer(options) {
   }
 
   // Step 3: Associate the token
+  let alreadyAssociated = false;
   try {
     const tx = await new AssociateTx()
       .setAccountId(accountId)
       .setTokenIds([tokenId])
       .freezeWith(client);
 
+    // The account being associated must sign.
+    // The operator (fee payer) signs automatically via the client.
+    // If the player IS the operator, one signature suffices.
+    // If they're different accounts, we need the player's signature explicitly.
     const signedTx = await tx.sign(playerKey);
     const response = await signedTx.execute(client);
     await response.getReceipt(client);
 
     console.log(`[PlayerManager] Player ${accountId} associated with token ${tokenId}`);
-    return { success: true, alreadyAssociated: false };
   } catch (err) {
     // TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT is not an error — player is already set up
     if (err.message && err.message.includes('TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT')) {
       console.log(`[PlayerManager] Player ${accountId} already associated — skipping`);
-      return { success: true, alreadyAssociated: true };
+      alreadyAssociated = true;
+    } else {
+      throw err;
     }
-    throw err;
   }
+
+  // Step 4: Auto-distribute 3 random common starter cards (skip if already associated)
+  const starterCards = [];
+  if (!alreadyAssociated && options.treasuryAccountId && options.treasuryKey) {
+    const { db } = require('../db/database');
+    const { distributeCard } = require('../distribution/distributionService');
+
+    // Find up to 3 common cards still owned by treasury
+    const availableCommons = db.prepare(
+      `SELECT serialNumber FROM cards
+       WHERE tokenId = ? AND ownerAccountId = 'treasury'
+         AND JSON_EXTRACT(metadataJson, '$.rarity') = 'common'
+       ORDER BY RANDOM() LIMIT 3`
+    ).all(tokenId);
+
+    for (const row of availableCommons) {
+      try {
+        await distributeCard({
+          client,
+          tokenId,
+          serialNumber: row.serialNumber,
+          treasuryAccountId: options.treasuryAccountId,
+          treasuryKey: options.treasuryKey,
+          recipientAccountId: accountId,
+        });
+        starterCards.push(row.serialNumber);
+        console.log(`[PlayerManager] Starter card #${row.serialNumber} distributed to ${accountId}`);
+      } catch (distErr) {
+        // Non-fatal — log and continue with remaining cards
+        console.warn(`[PlayerManager] Could not distribute starter card #${row.serialNumber}: ${distErr.message}`);
+      }
+    }
+  }
+
+  return { success: true, alreadyAssociated, starterCards };
 }
 
 module.exports = { verifyAccountExists, getAccountHbarBalance, registerPlayer };

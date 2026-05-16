@@ -17,9 +17,10 @@
 require('dotenv').config();
 
 const express = require('express');
-const { Client, AccountId, PrivateKey } = require('@hashgraph/sdk');
+const { Client, AccountId } = require('@hashgraph/sdk');
 const { setupSchema } = require('./db/schema');
 const routes = require('./api/routes');
+const { parsePrivateKey } = require('./utils/parsePrivateKey');
 
 // Initialize database tables
 setupSchema();
@@ -28,7 +29,7 @@ setupSchema();
 function buildClient() {
   const network = process.env.HEDERA_NETWORK || 'testnet';
   const operatorId = AccountId.fromString(process.env.OPERATOR_ACCOUNT_ID);
-  const operatorKey = PrivateKey.fromString(process.env.OPERATOR_PRIVATE_KEY);
+  const operatorKey = parsePrivateKey(process.env.OPERATOR_PRIVATE_KEY);
 
   const client = network === 'mainnet'
     ? Client.forMainnet()
@@ -52,8 +53,12 @@ app.use(express.static('public'));
 // Mount all game routes under /api/v1
 app.use('/api/v1', routes);
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// Health check — also exposes server config the UI needs
+app.get('/health', (req, res) => res.json({
+  status: 'ok',
+  tokenId: process.env.TOKEN_ID || null,
+  network: process.env.HEDERA_NETWORK || 'testnet',
+}));
 
 const PORT = process.env.PORT || 3000;
 

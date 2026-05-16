@@ -22,6 +22,10 @@ const { logTransaction } = require('../audit/auditLogger');
 
 function parseKey(key) {
   if (typeof key !== 'string') return key;
+  const cleaned = key.startsWith('0x') || key.startsWith('0X') ? key.slice(2) : key;
+  try { return PrivateKey.fromStringECDSA(cleaned); } catch {}
+  try { return PrivateKey.fromStringDer(cleaned); } catch {}
+  try { return PrivateKey.fromStringED25519(cleaned); } catch {}
   try { return PrivateKey.fromStringECDSA(key); } catch {}
   try { return PrivateKey.fromStringDer(key); } catch {}
   return PrivateKey.fromStringED25519(key);
@@ -54,7 +58,8 @@ function listCard(options) {
   ).get(serialNumber, tokenId);
 
   if (!card || card.ownerAccountId !== sellerId) {
-    const err = new Error(`CARD_NOT_OWNED: ${sellerId} does not own card #${serialNumber}`);
+    const actualOwner = card ? card.ownerAccountId : 'nobody (card not found in DB)';
+    const err = new Error(`CARD_NOT_OWNED: ${sellerId} does not own card #${serialNumber} (current owner: ${actualOwner})`);
     err.code = 'CARD_NOT_OWNED';
     throw err;
   }
