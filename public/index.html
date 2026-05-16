@@ -145,6 +145,18 @@
     .role-table td:last-child { color: #ffc107; font-weight: 700; }
 
     .empty-msg { color: #555; font-size: 0.9rem; padding: 1rem 0; }
+
+    /* ── Card select dropdown ── */
+    select {
+      background: #1e1e1e; border: 1px solid #333; border-radius: 6px;
+      color: #e0e0e0; padding: 0.5rem 0.75rem; font-size: 0.9rem; width: 100%;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    select:focus { outline: none; border-color: #ffc107; }
+    select option { background: #1e1e1e; }
+
+    /* ── Mint card preview ── */
+    #mint-card-preview .card-tile { max-width: 180px; }
   </style>
 </head>
 <body>
@@ -189,17 +201,25 @@
   <!-- ── Mint a Card ── -->
   <section id="mint">
     <h2>✨ Mint a Card</h2>
+    <p style="font-size:0.82rem;color:#666;margin-bottom:1rem;">Choose a card to mint, or leave on Random for a surprise.</p>
     <div class="form-row">
-      <div class="field">
-        <label for="mint-token-id">Token ID</label>
-        <input type="text" id="mint-token-id" placeholder="0.0.12345" />
+      <div class="field" style="min-width:220px">
+        <label for="mint-card-select">Card</label>
+        <select id="mint-card-select">
+          <option value="">🎲 Random</option>
+        </select>
       </div>
       <div class="field">
-        <label for="mint-account-id">Account ID</label>
+        <label for="mint-token-id">Token ID <span style="color:#555">(optional)</span></label>
+        <input type="text" id="mint-token-id" placeholder="uses server default" />
+      </div>
+      <div class="field">
+        <label for="mint-account-id">Recipient Account ID</label>
         <input type="text" id="mint-account-id" placeholder="0.0.67890" />
       </div>
       <button id="mint-btn">Mint Card</button>
     </div>
+    <div id="mint-card-preview" style="margin-top:0.8rem;display:none"></div>
     <div id="mint-msg"></div>
   </section>
 
@@ -418,14 +438,50 @@ async function loadInventory() {
 }
 
 // ── Mint Form ─────────────────────────────────────────────────────────────
+
+// Populate card select dropdown grouped by rarity
+(function populateMintSelect() {
+  const select = document.getElementById('mint-card-select');
+  const rarities = ['common', 'rare', 'epic', 'legendary'];
+  const RARITY_LABELS = { common: '⬜ Common', rare: '🔵 Rare', epic: '🟣 Epic', legendary: '🟡 Legendary' };
+
+  rarities.forEach((rarity) => {
+    const group = document.createElement('optgroup');
+    group.label = RARITY_LABELS[rarity];
+    CARD_ROSTER.filter((c) => c.rarity === rarity).forEach((card) => {
+      const opt = document.createElement('option');
+      opt.value = card.name;
+      opt.textContent = `${ROLE_ICONS[card.role] || ''} ${card.name} — ATK ${card.attack} / DEF ${card.defense}`;
+      group.appendChild(opt);
+    });
+    select.appendChild(group);
+  });
+})();
+
+// Show card preview when a card is selected
+document.getElementById('mint-card-select').addEventListener('change', function () {
+  const previewEl = document.getElementById('mint-card-preview');
+  const name = this.value;
+  if (!name) { previewEl.style.display = 'none'; previewEl.innerHTML = ''; return; }
+  const card = CARD_ROSTER.find((c) => c.name === name);
+  if (!card) return;
+  previewEl.style.display = 'block';
+  previewEl.innerHTML = '';
+  previewEl.appendChild(buildCardTile({
+    serial_number: '—',
+    _meta: card,
+  }));
+});
+
 document.getElementById('mint-btn').addEventListener('click', async () => {
-  const tokenId   = document.getElementById('mint-token-id').value.trim();
+  const cardName  = document.getElementById('mint-card-select').value || undefined;
+  const tokenId   = document.getElementById('mint-token-id').value.trim() || undefined;
   const accountId = document.getElementById('mint-account-id').value.trim();
   const msgEl     = document.getElementById('mint-msg');
   const btn       = document.getElementById('mint-btn');
 
-  if (!validateMintForm({ tokenId, accountId })) {
-    showMsg(msgEl, 'Both Token ID and Account ID are required.', 'error');
+  if (!validateAccountId(accountId)) {
+    showMsg(msgEl, 'Recipient Account ID is required.', 'error');
     return;
   }
 
@@ -434,10 +490,14 @@ document.getElementById('mint-btn').addEventListener('click', async () => {
   msgEl.appendChild(spinner());
 
   try {
+    const body = { accountId };
+    if (tokenId)  body.tokenId  = tokenId;
+    if (cardName) body.cardName = cardName;
+
     const res  = await fetch('/api/v1/cards/mint', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tokenId, accountId }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     msgEl.innerHTML = '';
@@ -445,7 +505,7 @@ document.getElementById('mint-btn').addEventListener('click', async () => {
     if (!res.ok) {
       showMsg(msgEl, data.error || 'Mint failed.', 'error');
     } else {
-      showMsg(msgEl, `Minted: ${data.name || 'Card'} (Serial #${data.serialNumber})`, 'success');
+      showMsg(msgEl, `✅ Minted: ${data.name || 'Card'} (Serial #${data.serialNumber})`, 'success');
     }
   } catch (err) {
     msgEl.innerHTML = '';

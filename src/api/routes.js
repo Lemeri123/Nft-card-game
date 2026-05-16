@@ -64,8 +64,55 @@ router.post('/collection/create', async (req, res) => {
 // --- Cards ---
 router.post('/cards/mint', async (req, res) => {
   try {
-    const result = await mintCard({ ...req.body, client: req.app.locals.client });
-    res.json(result);
+    const { db } = require('../db/database');
+
+    const CARD_ROSTER = [
+      { name: 'Shadow Dragon',    role: 'Warrior',  rarity: 'common',    attack: 95,  defense: 80,  image: 'ipfs://QmShadowDragon' },
+      { name: 'Iron Soldier',     role: 'Warrior',  rarity: 'common',    attack: 35,  defense: 30,  image: 'ipfs://QmIronSoldier' },
+      { name: 'Forest Scout',     role: 'Ranger',   rarity: 'common',    attack: 28,  defense: 38,  image: 'ipfs://QmForestScout' },
+      { name: 'Stone Golem',      role: 'Guardian', rarity: 'common',    attack: 22,  defense: 45,  image: 'ipfs://QmStoneGolem' },
+      { name: 'Apprentice Mage',  role: 'Mage',     rarity: 'common',    attack: 40,  defense: 20,  image: 'ipfs://QmApprenticeMage' },
+      { name: 'Fire Knight',      role: 'Warrior',  rarity: 'rare',      attack: 65,  defense: 50,  image: 'ipfs://QmFireKnight' },
+      { name: 'Storm Eagle',      role: 'Ranger',   rarity: 'rare',      attack: 58,  defense: 55,  image: 'ipfs://QmStormEagle' },
+      { name: 'Ice Witch',        role: 'Mage',     rarity: 'rare',      attack: 70,  defense: 35,  image: 'ipfs://QmIceWitch' },
+      { name: 'Shield Titan',     role: 'Guardian', rarity: 'rare',      attack: 40,  defense: 72,  image: 'ipfs://QmShieldTitan' },
+      { name: 'Shadow Archer',    role: 'Ranger',   rarity: 'epic',      attack: 75,  defense: 68,  image: 'ipfs://QmShadowArcher' },
+      { name: 'Lava Colossus',    role: 'Warrior',  rarity: 'epic',      attack: 82,  defense: 65,  image: 'ipfs://QmLavaColossus' },
+      { name: 'Frost Sorceress',  role: 'Mage',     rarity: 'epic',      attack: 80,  defense: 55,  image: 'ipfs://QmFrostSorceress' },
+      { name: 'Iron Fortress',    role: 'Guardian', rarity: 'epic',      attack: 55,  defense: 85,  image: 'ipfs://QmIronFortress' },
+      { name: 'Thunder Phoenix',  role: 'Ranger',   rarity: 'legendary', attack: 88,  defense: 82,  image: 'ipfs://QmThunderPhoenix' },
+      { name: 'Void Witch',       role: 'Mage',     rarity: 'legendary', attack: 100, defense: 60,  image: 'ipfs://QmVoidWitch' },
+      { name: 'Eternal Guardian', role: 'Guardian', rarity: 'legendary', attack: 70,  defense: 95,  image: 'ipfs://QmEternalGuardian' },
+    ];
+
+    const tokenId   = req.body.tokenId   || process.env.TOKEN_ID;
+    const supplyKey = req.body.supplyKey || process.env.TREASURY_PRIVATE_KEY;
+
+    if (!tokenId)   return res.status(400).json({ error: 'tokenId is required', code: 'INVALID_REQUEST' });
+    if (!supplyKey) return res.status(400).json({ error: 'supplyKey not configured (set TREASURY_PRIVATE_KEY in .env)', code: 'INVALID_REQUEST' });
+
+    let cardTemplate;
+    if (req.body.cardName) {
+      cardTemplate = CARD_ROSTER.find((c) => c.name === req.body.cardName);
+      if (!cardTemplate) return res.status(400).json({ error: `Unknown card name: ${req.body.cardName}`, code: 'INVALID_REQUEST' });
+    } else {
+      cardTemplate = CARD_ROSTER[Math.floor(Math.random() * CARD_ROSTER.length)];
+    }
+
+    const supplyRow = db.prepare('SELECT COUNT(*) as count FROM cards WHERE tokenId = ?').get(tokenId);
+    const currentSupply = supplyRow ? supplyRow.count : 0;
+    const maxSupply = Number(req.body.maxSupply) || 1000;
+
+    const result = await mintCard({
+      client:        req.app.locals.client,
+      tokenId,
+      supplyKey,
+      metadata:      cardTemplate,
+      currentSupply,
+      maxSupply,
+    });
+
+    res.json({ ...result, name: cardTemplate.name, rarity: cardTemplate.rarity });
   } catch (err) { handleError(res, err); }
 });
 
