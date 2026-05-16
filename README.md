@@ -8,9 +8,7 @@ A collectible NFT card game backend built on the [Hedera](https://hedera.com) ne
 | Resource | Link |
 |---|---|
 | Card Collection (HCG) | [0.0.8963536 on HashScan](https://hashscan.io/testnet/token/0.0.8963536) |
-| First Minted Card — Shadow Dragon #5 | [Serial #5 on HashScan](https://hashscan.io/testnet/token/0.0.8963536/5)
-| Mint Transaction | [0.0.6456650@1778821466.777256948](https://hashscan.io/testnet/transaction/0.0.6456650@1778821466.777256948) |
-
+| Minted Cards| https://hashscan.io/testnet/token/0.0.8963536/holders
 
 ## Tech Stack
 
