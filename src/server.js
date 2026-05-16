@@ -46,6 +46,9 @@ if (process.env.OPERATOR_ACCOUNT_ID && process.env.OPERATOR_PRIVATE_KEY) {
   app.locals.client = buildClient();
 }
 
+// Serve static frontend from public/
+app.use(express.static('public'));
+
 // Mount all game routes under /api/v1
 app.use('/api/v1', routes);
 
