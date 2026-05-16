@@ -67,22 +67,22 @@ router.post('/cards/mint', async (req, res) => {
     const { db } = require('../db/database');
 
     const CARD_ROSTER = [
-      { name: 'Shadow Dragon',    role: 'Warrior',  rarity: 'common',    attack: 95,  defense: 80,  image: 'ipfs://QmShadowDragon' },
-      { name: 'Iron Soldier',     role: 'Warrior',  rarity: 'common',    attack: 35,  defense: 30,  image: 'ipfs://QmIronSoldier' },
-      { name: 'Forest Scout',     role: 'Ranger',   rarity: 'common',    attack: 28,  defense: 38,  image: 'ipfs://QmForestScout' },
-      { name: 'Stone Golem',      role: 'Guardian', rarity: 'common',    attack: 22,  defense: 45,  image: 'ipfs://QmStoneGolem' },
-      { name: 'Apprentice Mage',  role: 'Mage',     rarity: 'common',    attack: 40,  defense: 20,  image: 'ipfs://QmApprenticeMage' },
-      { name: 'Fire Knight',      role: 'Warrior',  rarity: 'rare',      attack: 65,  defense: 50,  image: 'ipfs://QmFireKnight' },
-      { name: 'Storm Eagle',      role: 'Ranger',   rarity: 'rare',      attack: 58,  defense: 55,  image: 'ipfs://QmStormEagle' },
-      { name: 'Ice Witch',        role: 'Mage',     rarity: 'rare',      attack: 70,  defense: 35,  image: 'ipfs://QmIceWitch' },
-      { name: 'Shield Titan',     role: 'Guardian', rarity: 'rare',      attack: 40,  defense: 72,  image: 'ipfs://QmShieldTitan' },
-      { name: 'Shadow Archer',    role: 'Ranger',   rarity: 'epic',      attack: 75,  defense: 68,  image: 'ipfs://QmShadowArcher' },
-      { name: 'Lava Colossus',    role: 'Warrior',  rarity: 'epic',      attack: 82,  defense: 65,  image: 'ipfs://QmLavaColossus' },
-      { name: 'Frost Sorceress',  role: 'Mage',     rarity: 'epic',      attack: 80,  defense: 55,  image: 'ipfs://QmFrostSorceress' },
-      { name: 'Iron Fortress',    role: 'Guardian', rarity: 'epic',      attack: 55,  defense: 85,  image: 'ipfs://QmIronFortress' },
-      { name: 'Thunder Phoenix',  role: 'Ranger',   rarity: 'legendary', attack: 88,  defense: 82,  image: 'ipfs://QmThunderPhoenix' },
-      { name: 'Void Witch',       role: 'Mage',     rarity: 'legendary', attack: 100, defense: 60,  image: 'ipfs://QmVoidWitch' },
-      { name: 'Eternal Guardian', role: 'Guardian', rarity: 'legendary', attack: 70,  defense: 95,  image: 'ipfs://QmEternalGuardian' },
+      { name: 'Shadow Dragon',    role: 'Warrior',  rarity: 'common',    attack: 95,  defense: 80,  image: 'ipfs://bafkreihojzbbgecgcjkssxvhkpxapx7bqss2phlgguz2cje7opa4qqf4vi' },
+      { name: 'Iron Soldier',     role: 'Warrior',  rarity: 'common',    attack: 35,  defense: 30,  image: 'ipfs://bafkreihojzbbgecgcjkssxvhkpxapx7bqss2phlgguz2cje7opa4qqf4vi' },
+      { name: 'Forest Scout',     role: 'Ranger',   rarity: 'common',    attack: 28,  defense: 38,  image: 'ipfs://bafkreia2fsi5ld7dvqx6qfezqqg57hfxnsardij7tnkklqbiyel3agkm2u' },
+      { name: 'Stone Golem',      role: 'Guardian', rarity: 'common',    attack: 22,  defense: 45,  image: 'ipfs://bafkreiee3ewkkvmdf26ie7vqwya452vswxhfm7yjktaht76qnm2hrdrz3a' },
+      { name: 'Apprentice Mage',  role: 'Mage',     rarity: 'common',    attack: 40,  defense: 20,  image: 'ipfs://bafybeicuhrviveittd3ja6p3qhfu5cnlofbzl3fwer2xuklhabhcllsaom' },
+      { name: 'Fire Knight',      role: 'Warrior',  rarity: 'rare',      attack: 65,  defense: 50,  image: 'ipfs://bafybeihcpekcqgyzylsbkjse532v6aobkq2eqahq375svatkz567ikadwu' },
+      { name: 'Storm Eagle',      role: 'Ranger',   rarity: 'rare',      attack: 58,  defense: 55,  image: 'ipfs://bafkreieswnnph7yqm2ihkmmr3ys752mr5i6yqab7arljw7sulta6kpoxqm' },
+      { name: 'Ice Witch',        role: 'Mage',     rarity: 'rare',      attack: 70,  defense: 35,  image: 'ipfs://bafkreifuw76xlogqopklz6yhpnvehcmk37ebf6ssbnr4puitotdmgqxlke' },
+      { name: 'Shield Titan',     role: 'Guardian', rarity: 'rare',      attack: 40,  defense: 72,  image: 'ipfs://bafkreiddalomyhhfqbqtin6g7pb2lpfu64zmodq5hzvcllabegnmlv7onu' },
+      { name: 'Shadow Archer',    role: 'Ranger',   rarity: 'epic',      attack: 75,  defense: 68,  image: 'ipfs://bafkreifkjq4jget4c3f6z7gxrcxkrnmpt5liwb27zbisrns6bizgvxvif4' },
+      { name: 'Lava Colossus',    role: 'Warrior',  rarity: 'epic',      attack: 82,  defense: 65,  image: 'ipfs://bafkreibh7dy2y2xlzn2qvysungxhzvqm6phqaa7gnflwzxkcbu366ywgy4' },
+      { name: 'Frost Sorceress',  role: 'Mage',     rarity: 'epic',      attack: 80,  defense: 55,  image: 'ipfs://bafkreifuw76xlogqopklz6yhpnvehcmk37ebf6ssbnr4puitotdmgqxlke' },
+      { name: 'Iron Fortress',    role: 'Guardian', rarity: 'epic',      attack: 55,  defense: 85,  image: 'ipfs://bafkreigrngrlnvbvghkzt6y6slsub6hogwummbkdfdfp3uks4gbpp7wceu' },
+      { name: 'Thunder Phoenix',  role: 'Ranger',   rarity: 'legendary', attack: 88,  defense: 82,  image: 'ipfs://bafkreiaotdn72pav4hog3zf633lijkexqx5dscdsiobfi7gigrar2zcg4e' },
+      { name: 'Void Witch',       role: 'Mage',     rarity: 'legendary', attack: 100, defense: 60,  image: 'ipfs://bafybeiba6trp6sfymxrd2blgo6yrqfdcktd7bc7wgoyz3st6zjswj6r7de' },
+      { name: 'Eternal Guardian', role: 'Guardian', rarity: 'legendary', attack: 70,  defense: 95,  image: 'ipfs://bafkreielkuyslttwodspzviqyzcv4rk2e2rxomdszppnnmpa7czxqyatbi' },
     ];
 
     const tokenId   = req.body.tokenId   || process.env.TOKEN_ID;
