@@ -175,11 +175,28 @@ router.post('/duels/:duelId/resolve', async (req, res) => {
 // --- Inventory ---
 router.get('/inventory/:accountId', async (req, res) => {
   try {
+    const { db } = require('../db/database');
     const result = await getPlayerInventory({
       accountId: req.params.accountId,
       tokenId: req.query.tokenId || process.env.TOKEN_ID,
     });
-    res.json(result);
+
+    // Enrich each card with local metadata (name, rarity, attack, defense)
+    // The on-chain metadata field is an IPFS CID, not the JSON itself.
+    // The actual card data lives in the local SQLite cards table.
+    const enriched = result.cards.map((card) => {
+      const serial = card.serial_number;
+      const row = db.prepare('SELECT metadataJson FROM cards WHERE serialNumber = ?').get(serial);
+      if (row && row.metadataJson) {
+        try {
+          const meta = JSON.parse(row.metadataJson);
+          return { ...card, metadata: Buffer.from(row.metadataJson).toString('base64'), _meta: meta };
+        } catch { /* fall through */ }
+      }
+      return card;
+    });
+
+    res.json({ ...result, cards: enriched });
   } catch (err) { handleError(res, err); }
 });
 

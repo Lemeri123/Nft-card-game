@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFT Card Game</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 2px solid #ffc107;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #header h1 { font-size: 1.6rem; color: #ffc107; letter-spacing: 2px; text-transform: uppercase; }
+    #health-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; padding: 0.3rem 0.8rem;
+      border-radius: 999px; border: 1px solid #444;
+      background: #1a1a1a;
+    }
+    #health-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+    #health-dot.online  { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+    #health-dot.offline { background: #f44336; box-shadow: 0 0 6px #f44336; }
+
+    /* ── Layout ── */
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; display: flex; flex-direction: column; gap: 2.5rem; }
+
+    section {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    section h2 {
+      font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;
+      color: #ffc107; margin-bottom: 1.2rem; border-bottom: 1px solid #2a2a2a; padding-bottom: 0.6rem;
+    }
+
+    /* ── Forms ── */
+    .form-row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-end; }
+    .field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 160px; }
+    label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="text"], input[type="number"] {
+      background: #1e1e1e; border: 1px solid #333; border-radius: 6px;
+      color: #e0e0e0; padding: 0.5rem 0.75rem; font-size: 0.9rem; width: 100%;
+      transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #ffc107; }
+
+    button {
+      background: #ffc107; color: #0d0d0d; border: none; border-radius: 6px;
+      padding: 0.55rem 1.4rem; font-weight: 700; font-size: 0.9rem;
+      cursor: pointer; transition: opacity 0.2s, transform 0.1s; white-space: nowrap;
+    }
+    button:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .msg { margin-top: 0.8rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; }
+    .msg.success { background: #1b3a1b; color: #81c784; border: 1px solid #2e7d32; }
+    .msg.error   { background: #3a1b1b; color: #e57373; border: 1px solid #7d2e2e; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #444; border-top-color: #ffc107;
+      border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Card gallery ── */
+    #gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card-tile {
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 10px;
+      padding: 0.9rem;
+      position: relative;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .card-tile:hover { transform: translateY(-3px); }
+
+    .card-tile.rarity-common    { border-color: #9e9e9e; box-shadow: 0 0 8px #9e9e9e33; }
+    .card-tile.rarity-rare      { border-color: #2196f3; box-shadow: 0 0 8px #2196f333; }
+    .card-tile.rarity-epic      { border-color: #9c27b0; box-shadow: 0 0 8px #9c27b033; }
+    .card-tile.rarity-legendary { border-color: #ffc107; box-shadow: 0 0 12px #ffc10755; }
+
+    .card-role-badge {
+      font-size: 1.3rem; display: block; margin-bottom: 0.3rem;
+    }
+    .card-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem; line-height: 1.2; }
+    .card-rarity {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 0.5rem; opacity: 0.7;
+    }
+    .card-rarity.common    { color: #9e9e9e; }
+    .card-rarity.rare      { color: #2196f3; }
+    .card-rarity.epic      { color: #9c27b0; }
+    .card-rarity.legendary { color: #ffc107; }
+
+    .card-stats { display: flex; gap: 0.5rem; font-size: 0.78rem; margin-bottom: 0.4rem; }
+    .stat { background: #252525; border-radius: 4px; padding: 0.2rem 0.4rem; }
+    .stat span { color: #888; }
+
+    .card-serial { font-size: 0.7rem; color: #555; }
+
+    /* role bonus tooltip */
+    .role-info { position: absolute; top: 0.6rem; right: 0.6rem; cursor: help; font-size: 0.75rem; color: #555; }
+    .role-info:hover::after {
+      content: attr(data-tip);
+      position: absolute; right: 0; top: 1.2rem;
+      background: #222; border: 1px solid #444; border-radius: 6px;
+      padding: 0.4rem 0.6rem; font-size: 0.72rem; color: #ccc;
+      white-space: nowrap; z-index: 10; pointer-events: none;
+    }
+
+    /* ── Role bonus reference table ── */
+    details { margin-top: 1.2rem; }
+    summary {
+      cursor: pointer; font-size: 0.8rem; color: #888;
+      text-transform: uppercase; letter-spacing: 0.5px; user-select: none;
+    }
+    summary:hover { color: #ffc107; }
+    .role-table { margin-top: 0.8rem; border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+    .role-table th, .role-table td {
+      border: 1px solid #2a2a2a; padding: 0.4rem 0.8rem; text-align: left;
+    }
+    .role-table th { background: #1e1e1e; color: #888; text-transform: uppercase; font-size: 0.72rem; }
+    .role-table td:last-child { color: #ffc107; font-weight: 700; }
+
+    .empty-msg { color: #555; font-size: 0.9rem; padding: 1rem 0; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>⚔️ NFT Card Game</h1>
+  <div id="health-badge">
+    <div id="health-dot"></div>
+    <span id="health-status">Checking…</span>
+  </div>
+</div>
+
+<main>
+
+  <!-- ── Card Gallery ── -->
+  <section id="gallery">
+    <h2>🃏 Card Gallery</h2>
+    <div class="form-row">
+      <div class="field">
+        <label for="account-id">Account ID</label>
+        <input type="text" id="account-id" placeholder="0.0.12345" />
+      </div>
+      <button id="load-btn">Load Inventory</button>
+    </div>
+    <div id="gallery-status"></div>
+    <div id="gallery-grid"></div>
+
+    <details>
+      <summary>Role Bonus Reference</summary>
+      <table class="role-table">
+        <thead><tr><th>Attacker</th><th>Defender</th><th>Bonus</th></tr></thead>
+        <tbody>
+          <tr><td>⚔️ Warrior</td><td>🔮 Mage</td><td>+10</td></tr>
+          <tr><td>🔮 Mage</td><td>🏹 Ranger</td><td>+10</td></tr>
+          <tr><td>🏹 Ranger</td><td>⚔️ Warrior</td><td>+10</td></tr>
+          <tr><td>🛡️ Guardian</td><td>🔮 Mage</td><td>+10</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  <!-- ── Mint a Card ── -->
+  <section id="mint">
+    <h2>✨ Mint a Card</h2>
+    <div class="form-row">
+      <div class="field">
+        <label for="mint-token-id">Token ID</label>
+        <input type="text" id="mint-token-id" placeholder="0.0.12345" />
+      </div>
+      <div class="field">
+        <label for="mint-account-id">Account ID</label>
+        <input type="text" id="mint-account-id" placeholder="0.0.67890" />
+      </div>
+      <button id="mint-btn">Mint Card</button>
+    </div>
+    <div id="mint-msg"></div>
+  </section>
+
+  <!-- ── Duel Challenge ── -->
+  <section id="duel">
+    <h2>⚔️ Duel Challenge</h2>
+    <div class="form-row">
+      <div class="field">
+        <label for="duel-challenger-id">Your Account ID</label>
+        <input type="text" id="duel-challenger-id" placeholder="0.0.111" />
+      </div>
+      <div class="field">
+        <label for="duel-challenger-serial">Your Card Serial</label>
+        <input type="number" id="duel-challenger-serial" placeholder="1" min="1" />
+      </div>
+      <div class="field">
+        <label for="duel-opponent-id">Opponent Account ID</label>
+        <input type="text" id="duel-opponent-id" placeholder="0.0.222" />
+      </div>
+      <div class="field">
+        <label for="duel-opponent-serial">Opponent Card Serial</label>
+        <input type="number" id="duel-opponent-serial" placeholder="2" min="1" />
+      </div>
+      <div class="field">
+        <label for="duel-token-id">Token ID</label>
+        <input type="text" id="duel-token-id" placeholder="0.0.12345" />
+      </div>
+      <div class="field">
+        <label for="duel-wager">Wager Amount</label>
+        <input type="number" id="duel-wager" placeholder="10" min="1" />
+      </div>
+      <button id="duel-btn">Challenge!</button>
+    </div>
+    <div id="duel-msg"></div>
+  </section>
+
+</main>
+
+<script>
+'use strict';
+
+// ── Card data ──────────────────────────────────────────────────────────────
+const CARD_ROSTER = [
+  { name: 'Shadow Dragon',    role: 'Warrior',  rarity: 'common',    attack: 95,  defense: 80 },
+  { name: 'Iron Soldier',     role: 'Warrior',  rarity: 'common',    attack: 35,  defense: 30 },
+  { name: 'Forest Scout',     role: 'Ranger',   rarity: 'common',    attack: 28,  defense: 38 },
+  { name: 'Stone Golem',      role: 'Guardian', rarity: 'common',    attack: 22,  defense: 45 },
+  { name: 'Apprentice Mage',  role: 'Mage',     rarity: 'common',    attack: 40,  defense: 20 },
+  { name: 'Fire Knight',      role: 'Warrior',  rarity: 'rare',      attack: 65,  defense: 50 },
+  { name: 'Storm Eagle',      role: 'Ranger',   rarity: 'rare',      attack: 58,  defense: 55 },
+  { name: 'Ice Witch',        role: 'Mage',     rarity: 'rare',      attack: 70,  defense: 35 },
+  { name: 'Shield Titan',     role: 'Guardian', rarity: 'rare',      attack: 40,  defense: 72 },
+  { name: 'Shadow Archer',    role: 'Ranger',   rarity: 'epic',      attack: 75,  defense: 68 },
+  { name: 'Lava Colossus',    role: 'Warrior',  rarity: 'epic',      attack: 82,  defense: 65 },
+  { name: 'Frost Sorceress',  role: 'Mage',     rarity: 'epic',      attack: 80,  defense: 55 },
+  { name: 'Iron Fortress',    role: 'Guardian', rarity: 'epic',      attack: 55,  defense: 85 },
+  { name: 'Thunder Phoenix',  role: 'Ranger',   rarity: 'legendary', attack: 88,  defense: 82 },
+  { name: 'Void Witch',       role: 'Mage',     rarity: 'legendary', attack: 100, defense: 60 },
+  { name: 'Eternal Guardian', role: 'Guardian', rarity: 'legendary', attack: 70,  defense: 95 },
+];
+
+const ROLE_ICONS = { Warrior: '⚔️', Mage: '🔮', Ranger: '🏹', Guardian: '🛡️' };
+
+const ROLE_BONUSES = [
+  { attacker: 'Warrior',  defender: 'Mage',    bonus: 10 },
+  { attacker: 'Mage',     defender: 'Ranger',  bonus: 10 },
+  { attacker: 'Ranger',   defender: 'Warrior', bonus: 10 },
+  { attacker: 'Guardian', defender: 'Mage',    bonus: 10 },
+];
+
+// ── Pure utilities (mirrored from frontend-utils.js) ──────────────────────
+function decodeMetadata(base64) {
+  try { return JSON.parse(atob(base64)); } catch { return null; }
+}
+
+function lookupRole(name) {
+  const entry = CARD_ROSTER.find((c) => c.name === name);
+  return entry ? entry.role : null;
+}
+
+function validateAccountId(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function validateMintForm({ tokenId, accountId }) {
+  return validateAccountId(tokenId) && validateAccountId(accountId);
+}
+
+function validateDuelForm(fields) {
+  const keys = ['challengerId', 'challengerCardSerial', 'opponentId', 'opponentCardSerial', 'tokenId', 'wagerAmount'];
+  return keys.every((k) => String(fields[k] ?? '').trim().length > 0);
+}
+
+function buildDuelPayload(formData) {
+  return {
+    challengerId:         formData.challengerId,
+    challengerCardSerial: Number(formData.challengerCardSerial),
+    targetId:             formData.opponentId,
+    targetCardSerial:     Number(formData.opponentCardSerial),
+    tokenId:              formData.tokenId,
+    wagerAmount:          Number(formData.wagerAmount),
+  };
+}
+
+// ── Role bonus tooltip text ────────────────────────────────────────────────
+function roleTip(role) {
+  const bonus = ROLE_BONUSES.find((b) => b.attacker === role);
+  if (!bonus) return `${ROLE_ICONS[role] || ''} ${role}`;
+  return `${ROLE_ICONS[role] || ''} ${role} beats ${bonus.defender}: +${bonus.bonus} score`;
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────
+function showMsg(el, text, type) {
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+
+function spinner() {
+  const s = document.createElement('span');
+  s.className = 'spinner';
+  return s;
+}
+
+// ── Health check ──────────────────────────────────────────────────────────
+(async function checkHealth() {
+  const dot    = document.getElementById('health-dot');
+  const status = document.getElementById('health-status');
+  try {
+    const res = await fetch('/health');
+    const data = await res.json();
+    if (data.status === 'ok') {
+      dot.className = 'online';
+      status.textContent = 'Server online';
+    } else {
+      throw new Error('not ok');
+    }
+  } catch {
+    dot.className = 'offline';
+    status.textContent = 'Server offline';
+  }
+})();
+
+// ── Card Gallery ──────────────────────────────────────────────────────────
+function buildCardTile(card) {
+  // _meta is pre-parsed by the server from the local DB (most reliable)
+  // Fall back to decoding the base64 metadata field from Mirror Node
+  const meta = card._meta || decodeMetadata(card.metadata || '') || {};
+  const name     = meta.name     || `Serial #${card.serial_number}`;
+  const rarity   = meta.rarity   || 'common';
+  const attack   = meta.attack   != null ? meta.attack   : '?';
+  const defense  = meta.defense  != null ? meta.defense  : '?';
+  const role     = lookupRole(name) || meta.role || '';
+  const icon     = ROLE_ICONS[role] || '🃏';
+
+  const tile = document.createElement('div');
+  tile.className = `card-tile rarity-${rarity}`;
+
+  tile.innerHTML = `
+    <span class="card-role-badge">${icon}</span>
+    <div class="card-name">${name}</div>
+    <div class="card-rarity ${rarity}">${rarity}</div>
+    <div class="card-stats">
+      <div class="stat"><span>ATK</span> ${attack}</div>
+      <div class="stat"><span>DEF</span> ${defense}</div>
+    </div>
+    <div class="card-serial">Serial #${card.serial_number}</div>
+    ${role ? `<span class="role-info" data-tip="${roleTip(role)}">ℹ</span>` : ''}
+  `;
+  return tile;
+}
+
+document.getElementById('load-btn').addEventListener('click', loadInventory);
+document.getElementById('account-id').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadInventory();
+});
+
+async function loadInventory() {
+  const accountId = document.getElementById('account-id').value.trim();
+  const statusEl  = document.getElementById('gallery-status');
+  const gridEl    = document.getElementById('gallery-grid');
+  const btn       = document.getElementById('load-btn');
+
+  if (!validateAccountId(accountId)) {
+    showMsg(statusEl, 'Please enter a valid account ID.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  gridEl.innerHTML = '';
+  statusEl.innerHTML = '';
+  statusEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch(`/api/v1/inventory/${encodeURIComponent(accountId)}`);
+    const data = await res.json();
+
+    statusEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(statusEl, data.error || 'Failed to load inventory.', 'error');
+      return;
+    }
+
+    const cards = data.cards || [];
+    if (cards.length === 0) {
+      gridEl.innerHTML = '<p class="empty-msg">No cards found.</p>';
+    } else {
+      cards.forEach((card) => gridEl.appendChild(buildCardTile(card)));
+    }
+  } catch (err) {
+    statusEl.innerHTML = '';
+    showMsg(statusEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Mint Form ─────────────────────────────────────────────────────────────
+document.getElementById('mint-btn').addEventListener('click', async () => {
+  const tokenId   = document.getElementById('mint-token-id').value.trim();
+  const accountId = document.getElementById('mint-account-id').value.trim();
+  const msgEl     = document.getElementById('mint-msg');
+  const btn       = document.getElementById('mint-btn');
+
+  if (!validateMintForm({ tokenId, accountId })) {
+    showMsg(msgEl, 'Both Token ID and Account ID are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch('/api/v1/cards/mint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenId, accountId }),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Mint failed.', 'error');
+    } else {
+      showMsg(msgEl, `Minted: ${data.name || 'Card'} (Serial #${data.serialNumber})`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Duel Form ─────────────────────────────────────────────────────────────
+document.getElementById('duel-btn').addEventListener('click', async () => {
+  const fields = {
+    challengerId:        document.getElementById('duel-challenger-id').value.trim(),
+    challengerCardSerial:document.getElementById('duel-challenger-serial').value.trim(),
+    opponentId:          document.getElementById('duel-opponent-id').value.trim(),
+    opponentCardSerial:  document.getElementById('duel-opponent-serial').value.trim(),
+    tokenId:             document.getElementById('duel-token-id').value.trim(),
+    wagerAmount:         document.getElementById('duel-wager').value.trim(),
+  };
+  const msgEl = document.getElementById('duel-msg');
+  const btn   = document.getElementById('duel-btn');
+
+  if (!validateDuelForm(fields)) {
+    showMsg(msgEl, 'All six fields are required.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.innerHTML = '';
+  msgEl.appendChild(spinner());
+
+  try {
+    const res  = await fetch('/api/v1/duels/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildDuelPayload(fields)),
+    });
+    const data = await res.json();
+    msgEl.innerHTML = '';
+
+    if (!res.ok) {
+      showMsg(msgEl, data.error || 'Challenge failed.', 'error');
+    } else {
+      showMsg(msgEl, `Duel created — ID: ${data.duelId}, Status: ${data.status}`, 'success');
+    }
+  } catch (err) {
+    msgEl.innerHTML = '';
+    showMsg(msgEl, err.message || 'Network error.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
