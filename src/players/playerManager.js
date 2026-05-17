@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('crypto');
+
 /**
  * PlayerManager — player registration and account validation
  *
@@ -18,7 +20,7 @@
  * This is a security feature — no one can force tokens onto your account.
  */
 
-const { AccountBalanceQuery, TokenAssociateTransaction, Hbar, HbarUnit } = require('@hashgraph/sdk');
+const { AccountBalanceQuery, AccountInfoQuery, TokenAssociateTransaction, Hbar, HbarUnit } = require('@hashgraph/sdk');
 const { parsePrivateKey } = require('../utils/parsePrivateKey');
 
 const MIN_HBAR_BALANCE = 0.1;
@@ -184,4 +186,79 @@ async function registerPlayer(options) {
   return { success: true, alreadyAssociated, starterCards };
 }
 
-module.exports = { verifyAccountExists, getAccountHbarBalance, registerPlayer };
+module.exports = { verifyAccountExists, getAccountHbarBalance, registerPlayer, issueOwnershipChallenge, verifyOwnership };
+
+/**
+ * Issues a short-lived challenge token for account ownership verification.
+ *
+ * @param {object} options
+ * @param {string} options.accountId
+ * @param {object} [options._deps]
+ * @returns {{ challengeToken: string, expiresAt: number }}
+ */
+function issueOwnershipChallenge({ accountId, _deps }) {
+  const dbInstance = (_deps && _deps.db) || require('../db/database').db;
+  const challengeToken = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+  dbInstance.prepare(`
+    INSERT INTO ownership_challenges (token, accountId, expiresAt, usedAt)
+    VALUES (?, ?, ?, NULL)
+  `).run(challengeToken, accountId, expiresAt);
+
+  return { challengeToken, expiresAt };
+}
+
+/**
+ * Verifies that a player controls their Hedera account by checking a signed challenge token.
+ *
+ * @param {object} options
+ * @param {string} options.accountId
+ * @param {string} options.challengeToken
+ * @param {string} options.signature - hex-encoded signature of the challengeToken bytes
+ * @param {import('@hashgraph/sdk').Client} options.client
+ * @param {object} [options._deps]
+ * @returns {Promise<{ verified: true }>}
+ */
+async function verifyOwnership({ accountId, challengeToken, signature, client, _deps }) {
+  const dbInstance = (_deps && _deps.db) || require('../db/database').db;
+  const InfoQuery = (_deps && _deps.AccountInfoQuery) || AccountInfoQuery;
+
+  const row = dbInstance.prepare(
+    'SELECT * FROM ownership_challenges WHERE token = ? AND accountId = ?'
+  ).get(challengeToken, accountId);
+
+  if (!row) {
+    const err = new Error(`CHALLENGE_NOT_FOUND: no challenge found for accountId ${accountId}`);
+    err.code = 'CHALLENGE_NOT_FOUND';
+    throw err;
+  }
+
+  if (row.usedAt !== null || Date.now() > row.expiresAt) {
+    const err = new Error('CHALLENGE_EXPIRED: challenge token has expired or already been used');
+    err.code = 'CHALLENGE_EXPIRED';
+    throw err;
+  }
+
+  // Fetch the account's public key from Hedera
+  const info = await new InfoQuery().setAccountId(accountId).execute(client);
+  const publicKey = info.key;
+
+  // Verify the signature: the message is the UTF-8 bytes of the challengeToken
+  const messageBytes = Buffer.from(challengeToken, 'utf8');
+  const signatureBytes = Buffer.from(signature, 'hex');
+
+  const isValid = publicKey.verify(messageBytes, signatureBytes);
+  if (!isValid) {
+    const err = new Error('INVALID_SIGNATURE: signature verification failed');
+    err.code = 'INVALID_SIGNATURE';
+    throw err;
+  }
+
+  // Invalidate the token so it cannot be reused
+  dbInstance.prepare(
+    'UPDATE ownership_challenges SET usedAt = ? WHERE token = ?'
+  ).run(Date.now(), challengeToken);
+
+  return { verified: true };
+}
