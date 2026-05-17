@@ -27,14 +27,23 @@ const { registerPlayer } = require('../players/playerManager');
 const { distributeCard } = require('../distribution/distributionService');
 const { proposeTrade, executeTrade } = require('../trading/tradeService');
 const { listCard, purchaseCard, invalidateListing, getActiveListings } = require('../marketplace/marketplaceService');
-const { challengePlayer, acceptDuel, resolveDuel } = require('../duels/duelService');
+const { challengePlayer, acceptDuel, resolveDuel, getPendingDuels, getDuelHistory } = require('../duels/duelService');
 const { getPlayerInventory, getCardDetails, getTransactionHistory } = require('../inventory/inventoryService');
 const { getPlayerHistory } = require('../audit/auditLogger');
+const { issueOwnershipChallenge, verifyOwnership } = require('../players/playerManager');
+const { createNotification, getNotifications, markRead, clearRead } = require('../inbox/inboxService');
+const { sendMessage, getMessages, getConversation, markMessageRead } = require('../chat/chatService');
 
 const router = express.Router();
 
 // Map application error codes to HTTP status codes
 const ERROR_STATUS = {
+  CHALLENGE_EXPIRED:   410,
+  INVALID_SIGNATURE:   401,
+  CHALLENGE_NOT_FOUND: 404,
+  EMPTY_MESSAGE:       400,
+  MESSAGE_TOO_LONG:    400,
+  SELF_MESSAGE:        400,
   CARD_NOT_FOUND: 404,
   ACCOUNT_NOT_FOUND: 404,
   LISTING_NOT_FOUND: 404,
@@ -271,6 +280,20 @@ router.post('/duels/:duelId/resolve', async (req, res) => {
   } catch (err) { handleError(res, err); }
 });
 
+router.get('/duels/pending/:accountId', (req, res) => {
+  try {
+    const result = getPendingDuels({ accountId: req.params.accountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.get('/duels/history/:accountId', (req, res) => {
+  try {
+    const result = getDuelHistory({ accountId: req.params.accountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
 // --- Inventory ---
 router.get('/inventory/:accountId', async (req, res) => {
   try {
@@ -307,9 +330,84 @@ router.get('/history/:accountId', (req, res) => {
   } catch (err) { handleError(res, err); }
 });
 
-// --- Leaderboard ---
-router.get('/leaderboard', (req, res) => {
+// --- Ownership ---
+router.post('/players/ownership-challenge', (req, res) => {
   try {
+    const result = issueOwnershipChallenge({ accountId: req.body.accountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.post('/players/verify-ownership', async (req, res) => {
+  try {
+    const result = await verifyOwnership({
+      ...req.body,
+      client: req.app.locals.client,
+    });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// --- Inbox ---
+router.get('/inbox/:accountId', (req, res) => {
+  try {
+    const result = getNotifications({ accountId: req.params.accountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.post('/inbox/:accountId/read/:notificationId', (req, res) => {
+  try {
+    const result = markRead({ accountId: req.params.accountId, notificationId: req.params.notificationId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.delete('/inbox/:accountId/notifications', (req, res) => {
+  try {
+    const result = clearRead({ accountId: req.params.accountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// --- Chat ---
+// NOTE: conversation route must be registered before messages route to avoid shadowing
+router.get('/chat/conversation/:accountId/:otherAccountId', (req, res) => {
+  try {
+    const result = getConversation({ accountId: req.params.accountId, otherAccountId: req.params.otherAccountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.post('/chat/send', (req, res) => {
+  try {
+    const result = sendMessage(req.body);
+    // Also create an inbox notification for the recipient
+    createNotification({
+      recipientAccountId: req.body.recipientAccountId,
+      type: 'NEW_MESSAGE',
+      payload: { senderAccountId: req.body.senderAccountId, messageId: result.messageId },
+    });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.get('/chat/:accountId/messages', (req, res) => {
+  try {
+    const result = getMessages({ accountId: req.params.accountId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+router.post('/chat/:accountId/messages/read/:messageId', (req, res) => {
+  try {
+    const result = markMessageRead({ accountId: req.params.accountId, messageId: req.params.messageId });
+    res.json(result);
+  } catch (err) { handleError(res, err); }
+});
+
+// --- Leaderboard ---
+router.get('/leaderboard', (req, res) => {  try {
     const { db } = require('../db/database');
     const limit = Math.min(Number(req.query.limit) || 10, 100);
     // Count duel wins per account from the audit log

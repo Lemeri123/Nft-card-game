@@ -1014,5 +1014,318 @@ document.getElementById('duel-btn').addEventListener('click', async () => {
   }
 });
 </script>
+
+<!-- ── Inbox ── -->
+<section id="inbox" style="display:none">
+  <h2>📬 Inbox</h2>
+  <div class="form-row">
+    <div class="field">
+      <label for="inbox-account-id">Account ID</label>
+      <input type="text" id="inbox-account-id" placeholder="0.0.12345" />
+    </div>
+    <button id="inbox-load-btn">Load Inbox</button>
+  </div>
+  <div id="inbox-msg"></div>
+  <div id="inbox-list" style="margin-top:1rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
+</section>
+
+<!-- ── Pending Duels ── -->
+<section id="pending-duels" style="display:none">
+  <h2>⏳ Pending Duels</h2>
+  <div class="form-row">
+    <div class="field">
+      <label for="pending-account-id">Account ID</label>
+      <input type="text" id="pending-account-id" placeholder="0.0.12345" />
+    </div>
+    <div class="field">
+      <label for="pending-token-id">Token ID</label>
+      <input type="text" id="pending-token-id" placeholder="0.0.12345" />
+    </div>
+    <button id="pending-load-btn">Load Pending Duels</button>
+  </div>
+  <div id="pending-msg"></div>
+  <div id="pending-list" style="margin-top:1rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
+</section>
+
+<!-- ── Chat ── -->
+<section id="chat" style="display:none">
+  <h2>💬 Chat</h2>
+  <div class="form-row">
+    <div class="field">
+      <label for="chat-my-id">My Account ID</label>
+      <input type="text" id="chat-my-id" placeholder="0.0.111" />
+    </div>
+    <div class="field">
+      <label for="chat-other-id">Recipient Account ID</label>
+      <input type="text" id="chat-other-id" placeholder="0.0.222" />
+    </div>
+    <button id="chat-load-btn">Load Conversation</button>
+  </div>
+  <div id="chat-conversation" style="margin-top:1rem;min-height:120px;max-height:320px;overflow-y:auto;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:0.8rem;display:flex;flex-direction:column;gap:0.5rem;"></div>
+  <div style="margin-top:0.8rem;">
+    <textarea id="chat-body" rows="3" placeholder="Type a message… (max 1000 chars)"
+      style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:6px;color:#e0e0e0;padding:0.5rem 0.75rem;font-size:0.9rem;resize:vertical;"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.4rem;">
+      <span id="chat-char-count" style="font-size:0.75rem;color:#555;">0 / 1000</span>
+      <button id="chat-send-btn" disabled>Send</button>
+    </div>
+  </div>
+  <div id="chat-msg"></div>
+</section>
+
+</main>
+
+<script>
+'use strict';
+// ── Inbox section ──────────────────────────────────────────────────────────
+(function initInbox() {
+  const section = document.getElementById('inbox');
+  section.style.display = '';
+
+  document.getElementById('inbox-load-btn').addEventListener('click', loadInbox);
+  document.getElementById('inbox-account-id').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadInbox();
+  });
+
+  async function loadInbox() {
+    const accountId = document.getElementById('inbox-account-id').value.trim();
+    const listEl    = document.getElementById('inbox-list');
+    const msgEl     = document.getElementById('inbox-msg');
+    const btn       = document.getElementById('inbox-load-btn');
+
+    if (!validateAccountId(accountId)) {
+      showMsg(msgEl, 'Enter a valid account ID.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    listEl.innerHTML = '';
+    msgEl.innerHTML = '';
+    listEl.appendChild(spinner());
+
+    try {
+      const res  = await fetch(`/api/v1/inbox/${encodeURIComponent(accountId)}`);
+      const data = await res.json();
+      listEl.innerHTML = '';
+
+      if (!res.ok) { showMsg(msgEl, data.error || 'Failed to load inbox.', 'error'); return; }
+
+      if (!data.length) {
+        listEl.innerHTML = '<p class="empty-msg">No notifications.</p>';
+        return;
+      }
+
+      data.forEach((n) => {
+        const card = document.createElement('div');
+        card.style.cssText = `background:#1a1a1a;border:1px solid ${n.read ? '#2a2a2a' : '#ffc107'};border-radius:8px;padding:0.7rem 1rem;display:flex;justify-content:space-between;align-items:flex-start;gap:0.8rem;`;
+
+        let summary = n.type;
+        if (n.type === 'DUEL_CHALLENGE' && n.payload) {
+          summary = `⚔️ Duel challenge from ${n.payload.challengerAccountId} — card #${n.payload.challengerCardSerial} vs #${n.payload.targetCardSerial} — expires ${new Date(n.payload.expiresAt).toLocaleTimeString()}`;
+        } else if (n.type === 'DUEL_RESOLVED' && n.payload) {
+          summary = `🏆 Duel resolved — winner: ${n.payload.winnerId}`;
+        } else if (n.type === 'DUEL_EXPIRED') {
+          summary = `⌛ Duel expired`;
+        } else if (n.type === 'NEW_MESSAGE' && n.payload) {
+          summary = `💬 New message from ${n.payload.senderAccountId}`;
+        }
+
+        card.innerHTML = `
+          <div>
+            <div style="font-size:0.85rem;${n.read ? 'color:#888' : 'font-weight:700'}">${summary}</div>
+            <div style="font-size:0.72rem;color:#555;margin-top:0.2rem">${new Date(n.createdAt).toLocaleString()}</div>
+          </div>
+          ${!n.read ? `<button data-nid="${n.notificationId}" data-aid="${accountId}" class="mark-read-btn" style="font-size:0.75rem;padding:0.3rem 0.7rem;white-space:nowrap;">Mark Read</button>` : ''}
+        `;
+        listEl.appendChild(card);
+      });
+
+      listEl.querySelectorAll('.mark-read-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const nid = btn.dataset.nid;
+          const aid = btn.dataset.aid;
+          btn.disabled = true;
+          await fetch(`/api/v1/inbox/${encodeURIComponent(aid)}/read/${encodeURIComponent(nid)}`, { method: 'POST' });
+          loadInbox();
+        });
+      });
+    } catch (err) {
+      listEl.innerHTML = '';
+      showMsg(msgEl, err.message || 'Network error.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+})();
+
+// ── Pending Duels section ──────────────────────────────────────────────────
+(function initPendingDuels() {
+  const section = document.getElementById('pending-duels');
+  section.style.display = '';
+
+  document.getElementById('pending-load-btn').addEventListener('click', loadPending);
+
+  async function loadPending() {
+    const accountId = document.getElementById('pending-account-id').value.trim();
+    const tokenId   = document.getElementById('pending-token-id').value.trim();
+    const listEl    = document.getElementById('pending-list');
+    const msgEl     = document.getElementById('pending-msg');
+    const btn       = document.getElementById('pending-load-btn');
+
+    if (!validateAccountId(accountId)) {
+      showMsg(msgEl, 'Enter a valid account ID.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    listEl.innerHTML = '';
+    msgEl.innerHTML = '';
+    listEl.appendChild(spinner());
+
+    try {
+      const res  = await fetch(`/api/v1/duels/pending/${encodeURIComponent(accountId)}`);
+      const data = await res.json();
+      listEl.innerHTML = '';
+
+      if (!res.ok) { showMsg(msgEl, data.error || 'Failed to load pending duels.', 'error'); return; }
+
+      if (!data.length) {
+        listEl.innerHTML = '<p class="empty-msg">No pending duels.</p>';
+        return;
+      }
+
+      data.forEach((duel) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:0.7rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:0.8rem;flex-wrap:wrap;';
+        row.innerHTML = `
+          <div>
+            <div style="font-size:0.85rem;font-weight:700">⚔️ Challenge from ${duel.challengerAccountId}</div>
+            <div style="font-size:0.78rem;color:#aaa;margin-top:0.2rem">Card #${duel.challengerCardSerial} vs your #${duel.targetCardSerial}</div>
+            <div style="font-size:0.72rem;color:#555;margin-top:0.2rem">Expires: ${new Date(duel.expiresAt).toLocaleString()}</div>
+          </div>
+          <button data-duel-id="${duel.duelId}" class="accept-pending-btn">Accept</button>
+        `;
+        listEl.appendChild(row);
+      });
+
+      listEl.querySelectorAll('.accept-pending-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const duelId = btn.dataset.duelId;
+          if (!tokenId) { showMsg(msgEl, 'Enter a Token ID to accept.', 'error'); return; }
+          btn.disabled = true;
+          try {
+            const res = await fetch(`/api/v1/duels/${encodeURIComponent(duelId)}/accept`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tokenId }),
+            });
+            const data = await res.json();
+            if (!res.ok) { showMsg(msgEl, data.error || 'Accept failed.', 'error'); btn.disabled = false; return; }
+            showMsg(msgEl, `✅ Duel ${duelId} accepted.`, 'success');
+            loadPending();
+          } catch (err) {
+            showMsg(msgEl, err.message || 'Network error.', 'error');
+            btn.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      listEl.innerHTML = '';
+      showMsg(msgEl, err.message || 'Network error.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+})();
+
+// ── Chat section ───────────────────────────────────────────────────────────
+(function initChat() {
+  const section = document.getElementById('chat');
+  section.style.display = '';
+
+  const bodyEl      = document.getElementById('chat-body');
+  const charCount   = document.getElementById('chat-char-count');
+  const sendBtn     = document.getElementById('chat-send-btn');
+  const convEl      = document.getElementById('chat-conversation');
+  const msgEl       = document.getElementById('chat-msg');
+
+  bodyEl.addEventListener('input', () => {
+    const len = bodyEl.value.length;
+    charCount.textContent = `${len} / 1000`;
+    charCount.style.color = len > 1000 ? '#e57373' : '#555';
+    sendBtn.disabled = len === 0 || len > 1000 || bodyEl.value.trim().length === 0;
+  });
+
+  document.getElementById('chat-load-btn').addEventListener('click', loadConversation);
+
+  async function loadConversation() {
+    const myId    = document.getElementById('chat-my-id').value.trim();
+    const otherId = document.getElementById('chat-other-id').value.trim();
+    if (!validateAccountId(myId) || !validateAccountId(otherId)) {
+      showMsg(msgEl, 'Both account IDs are required.', 'error');
+      return;
+    }
+    convEl.innerHTML = '';
+    convEl.appendChild(spinner());
+    try {
+      const res  = await fetch(`/api/v1/chat/conversation/${encodeURIComponent(myId)}/${encodeURIComponent(otherId)}`);
+      const data = await res.json();
+      convEl.innerHTML = '';
+      if (!data.length) { convEl.innerHTML = '<p class="empty-msg">No messages yet.</p>'; return; }
+      data.forEach((m) => renderMessage(m, myId));
+    } catch (err) {
+      convEl.innerHTML = '';
+      convEl.innerHTML = `<p class="empty-msg" style="color:#e57373">${err.message}</p>`;
+    }
+  }
+
+  function renderMessage(m, myId) {
+    const isMine = m.senderAccountId === myId;
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `max-width:70%;align-self:${isMine ? 'flex-end' : 'flex-start'};background:${isMine ? '#1a3a1a' : '#1a1a2e'};border:1px solid ${isMine ? '#2e7d32' : '#1a237e'};border-radius:10px;padding:0.5rem 0.8rem;`;
+    bubble.innerHTML = `
+      <div style="font-size:0.72rem;color:#888;margin-bottom:0.2rem">${isMine ? 'You' : m.senderAccountId}</div>
+      <div style="font-size:0.88rem">${m.body.replace(/</g,'&lt;')}</div>
+      <div style="font-size:0.68rem;color:#555;margin-top:0.2rem;text-align:right">${new Date(m.createdAt).toLocaleTimeString()}</div>
+    `;
+    convEl.appendChild(bubble);
+  }
+
+  sendBtn.addEventListener('click', async () => {
+    const myId    = document.getElementById('chat-my-id').value.trim();
+    const otherId = document.getElementById('chat-other-id').value.trim();
+    const body    = bodyEl.value;
+
+    if (!validateAccountId(myId) || !validateAccountId(otherId)) {
+      showMsg(msgEl, 'Both account IDs are required.', 'error');
+      return;
+    }
+    if (!body.trim() || body.length > 1000) return;
+
+    sendBtn.disabled = true;
+    msgEl.innerHTML = '';
+
+    try {
+      const res  = await fetch('/api/v1/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderAccountId: myId, recipientAccountId: otherId, body }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) { showMsg(msgEl, data.error || 'Send failed.', 'error'); return; }
+
+      bodyEl.value = '';
+      charCount.textContent = '0 / 1000';
+      renderMessage(data, myId);
+      convEl.scrollTop = convEl.scrollHeight;
+    } catch (err) {
+      showMsg(msgEl, err.message || 'Network error.', 'error');
+    } finally {
+      sendBtn.disabled = bodyEl.value.trim().length === 0;
+    }
+  });
+})();
+</script>
 </body>
 </html>
