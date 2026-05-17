@@ -16,16 +16,11 @@
  * hash, so if anyone tampers with the file the CID changes and you'd know.
  */
 
-const { TokenMintTransaction, PrivateKey } = require('@hashgraph/sdk');
+const { TokenMintTransaction } = require('@hashgraph/sdk');
 const { parseCardMetadata, printCardMetadata } = require('./cardMetadata');
 const { db } = require('../db/database');
-
-function parseKey(key) {
-  if (typeof key !== 'string') return key;
-  try { return PrivateKey.fromStringECDSA(key); } catch {}
-  try { return PrivateKey.fromStringDer(key); } catch {}
-  return PrivateKey.fromStringED25519(key);
-}
+const { parsePrivateKey } = require('../utils/parsePrivateKey');
+const { distributeCard } = require('../distribution/distributionService');
 
 /**
  * Uploads metadata JSON to IPFS and returns the CID.
@@ -86,7 +81,7 @@ async function mintCard(options) {
   } = options;
 
   // Parse string key into PrivateKey object
-  const supplyKey = parseKey(options.supplyKey);
+  const supplyKey = parsePrivateKey(options.supplyKey);
 
   // Guard: reject if collection is full
   if (currentSupply >= maxSupply) {
@@ -137,4 +132,38 @@ async function mintCard(options) {
   }
 }
 
-module.exports = { mintCard, uploadToIpfs };
+/**
+ * Mints a card on treasury then transfers it to a player in one flow.
+ * Hedera always credits the token treasury on mint; this moves the serial to the recipient.
+ *
+ * @param {object} options - mintCard options plus recipientAccountId, treasuryAccountId, treasuryKey
+ * @returns {Promise<{ serialNumber: number, transactionId: string, distributedTo: string }>}
+ */
+async function mintCardToRecipient(options) {
+  const mintResult = await mintCard(options);
+
+  try {
+    const transfer = await distributeCard({
+      client: options.client,
+      tokenId: options.tokenId,
+      serialNumber: mintResult.serialNumber,
+      treasuryAccountId: options.treasuryAccountId,
+      treasuryKey: options.treasuryKey,
+      recipientAccountId: options.recipientAccountId,
+      _deps: options._deps,
+    });
+    return {
+      ...mintResult,
+      distributedTo: options.recipientAccountId,
+      transferTransactionId: transfer.transactionId,
+    };
+  } catch (err) {
+    const fail = new Error(
+      `TRANSFER_FAILED: minted serial #${mintResult.serialNumber} on treasury but could not send to ${options.recipientAccountId}: ${err.message}`
+    );
+    fail.code = 'TRANSFER_FAILED';
+    throw fail;
+  }
+}
+
+module.exports = { mintCard, mintCardToRecipient, uploadToIpfs };

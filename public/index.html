@@ -223,7 +223,7 @@
   <!-- ── Mint a Card ── -->
   <section id="mint">
     <h2>✨ Mint a Card</h2>
-    <p style="font-size:0.82rem;color:#666;margin-bottom:1rem;">Choose a card to mint, or leave on Random for a surprise.</p>
+    <p style="font-size:0.82rem;color:#666;margin-bottom:1rem;">Choose a card and enter the <strong>player</strong> account ID (not the treasury/operator). The card is minted then transferred to that player only.</p>
     <div class="form-row">
       <div class="field" style="min-width:220px">
         <label for="mint-card-select">Card</label>
@@ -638,7 +638,7 @@ document.getElementById('mint-btn').addEventListener('click', async () => {
   const btn       = document.getElementById('mint-btn');
 
   if (!validateAccountId(accountId)) {
-    showMsg(msgEl, 'Recipient Account ID is required.', 'error');
+    showMsg(msgEl, 'Player Recipient Account ID is required (not the treasury/operator account).', 'error');
     return;
   }
 
@@ -662,7 +662,8 @@ document.getElementById('mint-btn').addEventListener('click', async () => {
     if (!res.ok) {
       showMsg(msgEl, data.error || 'Mint failed.', 'error');
     } else {
-      showMsg(msgEl, `✅ Minted: ${data.name || 'Card'} (Serial #${data.serialNumber})`, 'success');
+      const owner = data.distributedTo ? ` → ${data.distributedTo}` : ' (treasury stock)';
+      showMsg(msgEl, `✅ Minted: ${data.name || 'Card'} (Serial #${data.serialNumber})${owner}`, 'success');
     }
   } catch (err) {
     msgEl.innerHTML = '';

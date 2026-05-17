@@ -17,20 +17,11 @@
  * 2. The recipient has associated with the token collection (can receive it)
  */
 
-const { TransferTransaction, PrivateKey } = require('@hashgraph/sdk');
+const { TransferTransaction } = require('@hashgraph/sdk');
 const { db } = require('../db/database');
 const { logTransaction } = require('../audit/auditLogger');
-
-function parseKey(key) {
-  if (typeof key !== 'string') return key;
-  const cleaned = key.startsWith('0x') || key.startsWith('0X') ? key.slice(2) : key;
-  try { return PrivateKey.fromStringECDSA(cleaned); } catch {}
-  try { return PrivateKey.fromStringDer(cleaned); } catch {}
-  try { return PrivateKey.fromStringED25519(cleaned); } catch {}
-  try { return PrivateKey.fromStringECDSA(key); } catch {}
-  try { return PrivateKey.fromStringDer(key); } catch {}
-  return PrivateKey.fromStringED25519(key);
-}
+const { parsePrivateKey } = require('../utils/parsePrivateKey');
+const { clearCache } = require('../inventory/inventoryService');
 
 /**
  * Distributes a card from the Treasury to a player.
@@ -55,7 +46,7 @@ async function distributeCard(options) {
     _deps,
   } = options;
 
-  const treasuryKey = parseKey(options.treasuryKey);
+  const treasuryKey = parsePrivateKey(options.treasuryKey);
 
   const dbInstance = (_deps && _deps.db) || db;
   const TransferTx = (_deps && _deps.TransferTransaction) || TransferTransaction;
@@ -107,6 +98,8 @@ async function distributeCard(options) {
       timestamp: Date.now(),
       status: 'confirmed',
     });
+
+    clearCache();
 
     console.log(`[DistributionService] Card #${serialNumber} distributed to ${recipientAccountId} (txId: ${transactionId})`);
     return { transactionId };

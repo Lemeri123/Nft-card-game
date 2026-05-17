@@ -21,7 +21,8 @@
 
 const express = require('express');
 const { createCardCollection } = require('../collection/collectionManager');
-const { mintCard } = require('../minting/cardMinter');
+const { mintCard, mintCardToRecipient } = require('../minting/cardMinter');
+const { clearCache } = require('../inventory/inventoryService');
 const { registerPlayer } = require('../players/playerManager');
 const { distributeCard } = require('../distribution/distributionService');
 const { proposeTrade, executeTrade } = require('../trading/tradeService');
@@ -44,6 +45,7 @@ const ERROR_STATUS = {
   DUEL_CANCELLED: 409,
   INVALID_PRICE: 400,
   MISSING_PLAYER_KEY: 400,
+  TRANSFER_FAILED: 502,
   INSUFFICIENT_BALANCE: 402,
   DUEL_EXPIRED: 410,
   SERVICE_UNAVAILABLE: 503,
@@ -104,16 +106,47 @@ router.post('/cards/mint', async (req, res) => {
     const currentSupply = supplyRow ? supplyRow.count : 0;
     const maxSupply = Number(req.body.maxSupply) || 1000;
 
-    const result = await mintCard({
-      client:        req.app.locals.client,
+    const recipientAccountId = (req.body.accountId || '').trim();
+    const treasuryAccountId = process.env.TREASURY_ACCOUNT_ID;
+    const mintOpts = {
+      client: req.app.locals.client,
       tokenId,
       supplyKey,
-      metadata:      cardTemplate,
+      metadata: cardTemplate,
       currentSupply,
       maxSupply,
-    });
+    };
 
-    res.json({ ...result, name: cardTemplate.name, rarity: cardTemplate.rarity });
+    let result;
+    if (recipientAccountId) {
+      if (!treasuryAccountId) {
+        return res.status(400).json({
+          error: 'TREASURY_ACCOUNT_ID must be set in .env to mint cards to a player',
+          code: 'INVALID_REQUEST',
+        });
+      }
+      if (recipientAccountId === treasuryAccountId) {
+        return res.status(400).json({
+          error: 'Recipient must be a player account, not the treasury/operator account',
+          code: 'INVALID_REQUEST',
+        });
+      }
+      result = await mintCardToRecipient({
+        ...mintOpts,
+        recipientAccountId,
+        treasuryAccountId,
+        treasuryKey: process.env.TREASURY_PRIVATE_KEY,
+      });
+      clearCache();
+    } else {
+      result = await mintCard(mintOpts);
+    }
+
+    res.json({
+      ...result,
+      name: cardTemplate.name,
+      rarity: cardTemplate.rarity,
+    });
   } catch (err) { handleError(res, err); }
 });
 
