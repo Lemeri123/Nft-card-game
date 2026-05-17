@@ -88,11 +88,12 @@ describe('DuelService — challengePlayer', () => {
 describe('DuelService — expireChallenge', () => {
   it('sets duel status to expired', () => {
     const runMock = vi.fn();
+    const getMock = vi.fn().mockReturnValue(null); // no duel row needed for basic test
     const fakeDb = {
-      prepare: vi.fn().mockReturnValue({ run: runMock }),
+      prepare: vi.fn().mockReturnValue({ run: runMock, get: getMock }),
     };
 
-    expireChallenge({ duelId: 'duel-123', _deps: { db: fakeDb } });
+    expireChallenge({ duelId: 'duel-123', _deps: { db: fakeDb, inboxService: { createNotification: vi.fn() } } });
     expect(runMock).toHaveBeenCalledWith('duel-123');
   });
 });
@@ -138,5 +139,101 @@ describe('DuelService — acceptDuel', () => {
 
     expect(() => acceptDuel({ duelId: 'd1', tokenId: '0.0.T', _deps: { db: fakeDb } }))
       .toThrow('DUEL_CANCELLED');
+  });
+});
+
+import { vi } from 'vitest';
+
+describe('DuelService — challengePlayer inbox notification', () => {
+  it('7.4: calls inboxService.createNotification with DUEL_CHALLENGE for the target', () => {
+    const runMock = vi.fn();
+    const fakeDb = {
+      prepare: vi.fn().mockReturnValue({ run: runMock }),
+    };
+    const createNotification = vi.fn();
+    const fakeInboxService = { createNotification };
+
+    const result = challengePlayer({
+      challengerId: '0.0.P1',
+      challengerCardSerial: 1,
+      targetId: '0.0.P2',
+      targetCardSerial: 2,
+      _deps: { db: fakeDb, inboxService: fakeInboxService },
+    });
+
+    expect(createNotification).toHaveBeenCalledOnce();
+    const call = createNotification.mock.calls[0][0];
+    expect(call.recipientAccountId).toBe('0.0.P2');
+    expect(call.type).toBe('DUEL_CHALLENGE');
+    expect(call.payload.duelId).toBe(result.duelId);
+    expect(call.payload.challengerAccountId).toBe('0.0.P1');
+  });
+});
+
+import Database from 'better-sqlite3';
+import { getPendingDuels } from './duelService.js';
+import fc from 'fast-check';
+
+function makeDuelDb() {
+  const db = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE duels (
+      duelId                 TEXT PRIMARY KEY,
+      challengerAccountId    TEXT,
+      challengerCardSerial   INTEGER,
+      targetAccountId        TEXT,
+      targetCardSerial       INTEGER,
+      status                 TEXT DEFAULT 'pending',
+      winnerId               TEXT,
+      transactionId          TEXT,
+      createdAt              INTEGER,
+      expiresAt              INTEGER
+    );
+    CREATE TABLE notifications (
+      notificationId      TEXT PRIMARY KEY,
+      recipientAccountId  TEXT NOT NULL,
+      type                TEXT NOT NULL,
+      payload             TEXT NOT NULL,
+      read                INTEGER NOT NULL DEFAULT 0,
+      createdAt           INTEGER NOT NULL
+    );
+  `);
+  return db;
+}
+
+describe('DuelService — getPendingDuels', () => {
+  // Feature: player-inbox-and-notifications, Property 8: Pending duels exclude expired
+  it('Property 8: getPendingDuels never returns a duel where expiresAt < Date.now()', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.boolean(), { minLength: 1, maxLength: 8 }),
+        (expiredFlags) => {
+          const db = makeDuelDb();
+          const now = Date.now();
+          const fakeInbox = { createNotification: vi.fn() };
+
+          expiredFlags.forEach((isExpired, i) => {
+            challengePlayer({
+              challengerId: `0.0.${100 + i}`,
+              challengerCardSerial: i + 1,
+              targetId: '0.0.TARGET',
+              targetCardSerial: i + 10,
+              _deps: { db, inboxService: fakeInbox },
+            });
+            if (isExpired) {
+              // Manually set expiresAt in the past
+              db.prepare("UPDATE duels SET expiresAt = ? WHERE targetAccountId = ? AND expiresAt > ?")
+                .run(now - 1000, '0.0.TARGET', now);
+            }
+          });
+
+          const pending = getPendingDuels({ accountId: '0.0.TARGET', _deps: { db } });
+          for (const duel of pending) {
+            expect(duel.expiresAt).toBeGreaterThan(Date.now() - 100); // small tolerance
+          }
+        }
+      ),
+      { numRuns: 20 }
+    );
   });
 });

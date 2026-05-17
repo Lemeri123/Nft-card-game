@@ -79,16 +79,26 @@ function computeDuelScore(card, prngValue, opponentRole) {
 function challengePlayer(options) {
   const { challengerId, challengerCardSerial, targetId, targetCardSerial, _deps } = options;
   const dbInstance = (_deps && _deps.db) || db;
+  const inboxSvc = (_deps && _deps.inboxService) || require('../inbox/inboxService');
 
   const duelId = uuidv4();
   const now = Date.now();
+  const expiresAt = now + DUEL_EXPIRY_MS;
 
   dbInstance.prepare(`
     INSERT INTO duels
       (duelId, challengerAccountId, challengerCardSerial, targetAccountId, targetCardSerial,
        status, winnerId, transactionId, createdAt, expiresAt)
     VALUES (?, ?, ?, ?, ?, 'pending', NULL, NULL, ?, ?)
-  `).run(duelId, challengerId, challengerCardSerial, targetId, targetCardSerial, now, now + DUEL_EXPIRY_MS);
+  `).run(duelId, challengerId, challengerCardSerial, targetId, targetCardSerial, now, expiresAt);
+
+  // Notify the target player of the duel challenge
+  inboxSvc.createNotification({
+    recipientAccountId: targetId,
+    type: 'DUEL_CHALLENGE',
+    payload: { duelId, challengerAccountId: challengerId, challengerCardSerial, targetCardSerial, expiresAt },
+    _deps,
+  });
 
   return { duelId };
 }
@@ -220,6 +230,11 @@ async function resolveDuel(options) {
     status: 'confirmed',
   });
 
+  // Notify both players of the duel result
+  const inboxSvc = (_deps && _deps.inboxService) || require('../inbox/inboxService');
+  inboxSvc.createNotification({ recipientAccountId: duel.challengerAccountId, type: 'DUEL_RESOLVED', payload: { duelId, winnerId }, _deps });
+  inboxSvc.createNotification({ recipientAccountId: duel.targetAccountId, type: 'DUEL_RESOLVED', payload: { duelId, winnerId }, _deps });
+
   return { winnerId, transactionId };
 }
 
@@ -233,7 +248,55 @@ async function resolveDuel(options) {
 function expireChallenge(options) {
   const { duelId, _deps } = options;
   const dbInstance = (_deps && _deps.db) || db;
+  const inboxSvc = (_deps && _deps.inboxService) || require('../inbox/inboxService');
+
+  const duel = dbInstance.prepare('SELECT * FROM duels WHERE duelId = ?').get(duelId);
   dbInstance.prepare("UPDATE duels SET status = 'expired' WHERE duelId = ?").run(duelId);
+
+  if (duel) {
+    inboxSvc.createNotification({ recipientAccountId: duel.challengerAccountId, type: 'DUEL_EXPIRED', payload: { duelId }, _deps });
+    inboxSvc.createNotification({ recipientAccountId: duel.targetAccountId, type: 'DUEL_EXPIRED', payload: { duelId }, _deps });
+  }
 }
 
-module.exports = { challengePlayer, acceptDuel, resolveDuel, expireChallenge, computeDuelScore };
+module.exports = { challengePlayer, acceptDuel, resolveDuel, expireChallenge, computeDuelScore, getPendingDuels, getDuelHistory };
+
+/**
+ * Returns all pending (non-expired) duel challenges targeting an account.
+ *
+ * @param {object} options
+ * @param {string} options.accountId
+ * @param {object} [options._deps]
+ * @returns {Array}
+ */
+function getPendingDuels({ accountId, _deps }) {
+  const dbInstance = (_deps && _deps.db) || db;
+  const now = Date.now();
+
+  return dbInstance.prepare(`
+    SELECT duelId, challengerAccountId, challengerCardSerial, targetCardSerial, createdAt, expiresAt
+    FROM duels
+    WHERE targetAccountId = ? AND status = 'pending' AND expiresAt > ?
+    ORDER BY createdAt DESC
+  `).all(accountId, now);
+}
+
+/**
+ * Returns all resolved and expired duels involving an account as challenger or target.
+ *
+ * @param {object} options
+ * @param {string} options.accountId
+ * @param {object} [options._deps]
+ * @returns {Array}
+ */
+function getDuelHistory({ accountId, _deps }) {
+  const dbInstance = (_deps && _deps.db) || db;
+
+  return dbInstance.prepare(`
+    SELECT *
+    FROM duels
+    WHERE (challengerAccountId = ? OR targetAccountId = ?)
+      AND status IN ('resolved', 'expired')
+    ORDER BY createdAt DESC
+  `).all(accountId, accountId);
+}
