@@ -53,6 +53,35 @@ function setupSchema() {
       timestamp      INTEGER,
       status         TEXT DEFAULT 'confirmed'
     );
+
+    CREATE TABLE IF NOT EXISTS ownership_challenges (
+      token      TEXT PRIMARY KEY,
+      accountId  TEXT NOT NULL,
+      expiresAt  INTEGER NOT NULL,
+      usedAt     INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      notificationId      TEXT PRIMARY KEY,
+      recipientAccountId  TEXT NOT NULL,
+      type                TEXT NOT NULL,
+      payload             TEXT NOT NULL,
+      read                INTEGER NOT NULL DEFAULT 0,
+      createdAt           INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      messageId           TEXT PRIMARY KEY,
+      senderAccountId     TEXT NOT NULL,
+      recipientAccountId  TEXT NOT NULL,
+      body                TEXT NOT NULL,
+      read                INTEGER NOT NULL DEFAULT 0,
+      createdAt           INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipientAccountId, createdAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_chat_recipient ON chat_messages(recipientAccountId, createdAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_chat_conversation ON chat_messages(senderAccountId, recipientAccountId);
   `);
 }
 
