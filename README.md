@@ -138,11 +138,14 @@ There's no single win condition, it's a collector's game.
 
 Open `http://localhost:3000` after starting the server.
 
-The UI has three sections:
+The UI has six sections:
 
 - **Card Gallery**: Enter any account ID to view their card collection. Cards show role badge, rarity glow, ATK/DEF stats, and a role bonus tooltip.
 - **Mint a Card**: Choose a specific card from the roster (or pick Random) and mint it to an account.
 - **Duel Challenge**: Fill in both players' account IDs and card serials to submit a challenge.
+- **Inbox**: Enter your account ID to see all game notifications — duel challenges, resolutions, and new messages. Unread notifications are highlighted. Each can be marked as read individually.
+- **Pending Duels**: Enter your account ID to see all active duel challenges waiting for your response. Each row has an Accept button.
+- **Chat**: Enter your account ID and a recipient's account ID to load your conversation. Type a message (up to 1000 characters) and hit Send. Messages are displayed in chronological order with sent messages right-aligned.
 
 A server health indicator in the header shows whether the API is reachable.
 
@@ -268,6 +271,8 @@ All endpoints are prefixed with `/api/v1`.
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
 | `POST` | `/players/register` | `{ accountId, tokenId }` | Associate a player with the token collection |
+| `POST` | `/players/ownership-challenge` | `{ accountId }` | Issue a challenge token to prove account ownership |
+| `POST` | `/players/verify-ownership` | `{ accountId, challengeToken, signature }` | Verify ownership via signed challenge token |
 
 ### Trades
 
@@ -292,6 +297,25 @@ All endpoints are prefixed with `/api/v1`.
 | `POST` | `/duels/challenge` | `{ challengerId, challengerCardSerial, targetId, targetCardSerial, tokenId, wagerAmount }` | Challenge a player |
 | `POST` | `/duels/:duelId/accept` | `{ acceptorId }` | Accept a challenge |
 | `POST` | `/duels/:duelId/resolve` | `{ tokenId }` | Resolve with on-chain randomness |
+| `GET` | `/duels/pending/:accountId` | — | List pending (non-expired) challenges for an account |
+| `GET` | `/duels/history/:accountId` | — | List resolved and expired duels for an account |
+
+### Inbox
+
+| Method | Endpoint | Body | Description |
+|---|---|---|---|
+| `GET` | `/inbox/:accountId` | — | Get all notifications (unread first) |
+| `POST` | `/inbox/:accountId/read/:notificationId` | — | Mark a notification as read |
+| `DELETE` | `/inbox/:accountId/notifications` | — | Delete all read notifications |
+
+### Chat
+
+| Method | Endpoint | Body | Description |
+|---|---|---|---|
+| `POST` | `/chat/send` | `{ senderAccountId, recipientAccountId, body }` | Send a direct message (max 1000 chars) |
+| `GET` | `/chat/:accountId/messages` | — | Get all received messages (unread first) |
+| `GET` | `/chat/conversation/:accountId/:otherAccountId` | — | Get full conversation between two accounts |
+| `POST` | `/chat/:accountId/messages/read/:messageId` | — | Mark a message as read |
 
 ### Inventory & History
 
@@ -320,15 +344,17 @@ nft-card-game/
 │   ├── api/
 │   │   └── routes.js       # Express route handlers
 │   ├── audit/              # Audit log — every on-chain event recorded
+│   ├── chat/               # Player-to-player direct messaging
 │   ├── collection/         # Token collection creation (HTS)
 │   ├── db/                 # SQLite schema and connection
 │   ├── distribution/       # Card distribution from Treasury to players
 │   ├── duels/              # PvP duel system with on-chain randomness
 │   ├── frontend-utils.js   # Pure utility functions (shared with UI tests)
+│   ├── inbox/              # Per-player notification inbox
 │   ├── inventory/          # Mirror Node queries with 30s cache
 │   ├── marketplace/        # Card listings and purchases
 │   ├── minting/            # Card minting and metadata validation
-│   ├── players/            # Player registration and token association
+│   ├── players/            # Player registration, token association, ownership verification
 │   └── trading/            # Peer-to-peer card swaps
 ├── test/
 │   └── frontend.test.js    # UI utility unit + property-based tests
