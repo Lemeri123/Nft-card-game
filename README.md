@@ -18,6 +18,8 @@ Every card is a Non-Fungible Token on Hedera Token Service (HTS). Ownership is t
 ## The Cards
 
 16 unique cards across 4 rarities and 4 roles.
+<img width="983" height="860" alt="image" src="https://github.com/user-attachments/assets/9b9d6064-af47-46d0-9776-52923fc508a7" />
+
 
 ### Roles
 
@@ -381,3 +383,10 @@ Each card's on-chain metadata field contains an IPFS CID pointing to:
 
 Rarity values: `common` · `rare` · `epic` · `legendary`  
 Attack and defense: integers 1–100
+## Game Preview
+<img width="1918" height="878" alt="Screenshot from 2026-05-18 21-09-32" src="https://github.com/user-attachments/assets/28536ef1-c43a-47bc-986b-7b20c8b4d5be" />
+<img width="1918" height="932" alt="Screenshot from 2026-05-18 21-10-53" src="https://github.com/user-attachments/assets/76f9051a-4723-4ea3-b325-2f17eb7bd255" />
+<img width="1918" height="932" alt="Screenshot from 2026-05-18 21-10-46" src="https://github.com/user-attachments/assets/cbc8355f-0aa5-417f-983c-050f573ff17d" />
+<img width="1918" height="878" alt="Screenshot from 2026-05-18 21-08-08" src="https://github.com/user-attachments/assets/25099d5c-434e-4a44-9ce3-8bcd1408b666" />
+
+
